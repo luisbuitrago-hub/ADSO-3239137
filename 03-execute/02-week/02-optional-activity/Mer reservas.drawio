@@ -1,0 +1,130 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.5.2 Chrome/142.0.7444.265 Electron/39.6.1 Safari/537.36" version="29.5.2">
+  <diagram name="MER Hotel Pro" id="0">
+    <mxGraphModel dx="1345" dy="667" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="cliente" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;" value="CLIENTE" vertex="1">
+          <mxGeometry height="60" width="140" x="120" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="habitacion" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;" value="HABITACION" vertex="1">
+          <mxGeometry height="60" width="160" x="760" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="reserva" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;" value="RESERVA" vertex="1">
+          <mxGeometry height="60" width="140" x="420" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="c1" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="&lt;u&gt;id_cliente&lt;/u&gt;" vertex="1">
+          <mxGeometry height="40" width="120" x="60" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="c2" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="nombre" vertex="1">
+          <mxGeometry height="40" width="120" x="180" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="c3" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="telefono" vertex="1">
+          <mxGeometry height="40" width="120" x="40" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="c4" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="email" vertex="1">
+          <mxGeometry height="40" width="120" x="190" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="h1" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="&lt;u&gt;id_habitacion&lt;/u&gt;" vertex="1">
+          <mxGeometry height="40" width="150" x="740" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="h2" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="tipo" vertex="1">
+          <mxGeometry height="40" width="100" x="900" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="h3" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="precio_noche" vertex="1">
+          <mxGeometry height="40" width="150" x="740" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="h4" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="estado" vertex="1">
+          <mxGeometry height="40" width="120" x="900" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="r1" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="&lt;u&gt;id_reserva&lt;/u&gt;" vertex="1">
+          <mxGeometry height="40" width="140" x="680" y="600" as="geometry" />
+        </mxCell>
+        <mxCell id="r2" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="id_cliente (FK)" vertex="1">
+          <mxGeometry height="40" width="150" x="150" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="r3" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="id_habitacion (FK)" vertex="1">
+          <mxGeometry height="40" width="170" x="670" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="r4" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="fecha_entrada" vertex="1">
+          <mxGeometry height="40" width="150" x="300" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="r5" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="fecha_salida" vertex="1">
+          <mxGeometry height="40" width="150" x="520" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="r6" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="total" vertex="1">
+          <mxGeometry height="40" width="120" x="440" y="740" as="geometry" />
+        </mxCell>
+        <mxCell id="ec1" edge="1" parent="1" source="c1" target="cliente">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ec2" edge="1" parent="1" source="c2" target="cliente">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ec3" edge="1" parent="1" source="c3" target="cliente">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ec4" edge="1" parent="1" source="c4" target="cliente">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eh1" edge="1" parent="1" source="h1" target="habitacion">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eh2" edge="1" parent="1" source="h2" target="habitacion">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eh3" edge="1" parent="1" source="h3" target="habitacion">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eh4" edge="1" parent="1" source="h4" target="habitacion">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er1" edge="1" parent="1" source="r1" target="reserva">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er2" edge="1" parent="1" source="r2" target="reserva">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er3" edge="1" parent="1" source="r3" target="reserva">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er4" edge="1" parent="1" source="r4" target="reserva">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er5" edge="1" parent="1" source="r5" target="reserva">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er6" edge="1" parent="1" source="r6" target="reserva">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel1" edge="1" parent="1" source="NUNpFDbE9KVxjr04_UvJ-2" style="endArrow=block;" target="reserva" value="1:N">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel2" edge="1" parent="1" source="NUNpFDbE9KVxjr04_UvJ-1" style="endArrow=block;" target="reserva" value="1:N">
+          <mxGeometry relative="1" x="-0.2679" y="2" as="geometry">
+            <mxPoint y="-1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="NUNpFDbE9KVxjr04_UvJ-3" edge="1" parent="1" source="cliente" style="endArrow=block;" target="NUNpFDbE9KVxjr04_UvJ-2" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="231" y="360" as="sourcePoint" />
+            <mxPoint x="449" y="520" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="NUNpFDbE9KVxjr04_UvJ-2" parent="1" style="rhombus;whiteSpace=wrap;html=1;" value="tiene" vertex="1">
+          <mxGeometry height="80" width="80" x="320" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="NUNpFDbE9KVxjr04_UvJ-4" edge="1" parent="1" source="habitacion" style="endArrow=block;" target="NUNpFDbE9KVxjr04_UvJ-1" value="">
+          <mxGeometry relative="1" x="-0.2679" y="2" as="geometry">
+            <mxPoint y="-1" as="offset" />
+            <mxPoint x="792" y="360" as="sourcePoint" />
+            <mxPoint x="538" y="520" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="NUNpFDbE9KVxjr04_UvJ-1" parent="1" style="rhombus;whiteSpace=wrap;html=1;" value="tiene" vertex="1">
+          <mxGeometry height="80" width="80" x="600" y="410" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
