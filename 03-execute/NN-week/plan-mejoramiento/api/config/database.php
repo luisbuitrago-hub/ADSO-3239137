@@ -95,8 +95,26 @@ return [
             'charset' => env('DB_CHARSET', 'utf8'),
             'prefix' => '',
             'prefix_indexes' => true,
-           'search_path' => env('DB_SCHEMA', 'kitchenware'),
+            // El esquema es fijo según data-model.md y ADR-001.
+            'search_path' => 'kitchenware',
+            'timezone' => 'UTC',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+        ],
+
+        // Nunca hereda DB_URL, DB_DATABASE ni las credenciales de desarrollo.
+        'pgsql_testing' => [
+            'driver' => 'pgsql',
+            'host' => '127.0.0.1',
+            'port' => env('TEST_DB_PORT', '55432'),
+            'database' => 'kitchenware_test',
+            'username' => 'kitchenware_test',
+            'password' => 'kitchenware_test_only',
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'kitchenware',
+            'timezone' => 'UTC',
+            'sslmode' => 'disable',
         ],
 
         'sqlsrv' => [
