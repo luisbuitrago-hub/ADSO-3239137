@@ -4,8 +4,9 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 
-class User extends Authenticatable
+class User extends Authenticatable implements JWTSubject
 {
     protected $table = 'user';
 
@@ -41,4 +42,13 @@ class User extends Authenticatable
     {
         return $this->hasMany(Loan::class, 'loaned_by_user_id');
     }
+    public function getJWTIdentifier()
+{
+    return $this->getKey();
+}
+
+public function getJWTCustomClaims(): array
+{
+    return [];
+}
 }
