@@ -140,6 +140,64 @@ Los casos de uso de seguridad dependen de puertos de usuarios, hashing, tokens
 e identificadores. Sus adaptadores Laravel se enlazan en `AppServiceProvider`.
 Los seis modelos y las migraciones existentes se conservan.
 
+## Catálogo de categorías y artículos
+
+El catálogo utiliza las cinco categorías y las tablas existentes del esquema
+`kitchenware`; no agrega migraciones ni operaciones de mantenimiento de categorías.
+
+| Método | Ruta bajo `/api/v1` | Roles |
+|---|---|---|
+| GET | `/categories` | `admin`, `operator` |
+| GET | `/articles` | `admin`, `operator` |
+| GET | `/articles/{id}` | `admin`, `operator` |
+| POST | `/articles` | `admin` |
+| PUT | `/articles/{id}` | `admin` |
+| DELETE | `/articles/{id}` | `admin` |
+
+Todas requieren JWT Bearer. Las categorías se ordenan por nombre. La búsqueda
+admite `q` por nombre o descripción parcial, `category_id`, `page` y `size`.
+La paginación predeterminada es `page=1&size=20`; tamaños mayores de 50 o
+parámetros inválidos producen HTTP 422. La respuesta es `items`, `page`, `size`
+y `total`, ordenada por nombre e identificador para estabilizar los empates.
+La búsqueda trata `%`, `_` y `!` como texto literal, sin interpolar entradas SQL.
+Solo se muestran artículos activos; los inexistentes o desactivados producen 404.
+
+El registro recibe `name`, `description`, `reference`, `category_id` y
+`total_units`. Genera UUID v4 e inicializa `available_units` con el mismo total.
+Se verifican las longitudes del modelo, categoría existente y total entero
+positivo compatible con PostgreSQL. La referencia es única entre artículos
+activos: un duplicado produce `409 REFERENCE_TAKEN`, también ante una colisión
+detectada directamente por el índice único de PostgreSQL.
+
+La actualización conserva campos omitidos y permite cambiar nombre, descripción,
+categoría y total. La referencia permanece inmutable: un valor distinto produce
+422; enviar el mismo valor no la modifica. El cliente no puede asignar `id`,
+`available_units`, `cover_key` ni `deleted_at`, tampoco enviándolos como `null`.
+Al variar el total, la disponibilidad cambia por la misma diferencia. Si quedan
+unidades prestadas sin respaldo, se rechaza toda la actualización con 422,
+conservando también los metadatos anteriores.
+
+Las actualizaciones y bajas utilizan transacciones con bloqueo de la fila del
+artículo antes de validar su estado. La baja consulta `loan_item.returned_at`:
+si existen líneas pendientes, responde `409 ARTICLE_HAS_OPEN_LOANS`; en otro caso
+registra `deleted_at` en UTC y responde 204 sin eliminar físicamente el artículo.
+Las líneas históricas no se actualizan ni eliminan. Una referencia puede reutilizarse
+en otro artículo después de la baja, conservando la identidad del artículo histórico.
+
+Las pruebas rápidas emplean SQLite en memoria. La integración usa las migraciones
+reales en PostgreSQL temporal y verifica los seis endpoints, bloqueos, conflictos,
+inventario e historial. Los préstamos pendientes/devueltos se preparan mediante
+fixtures exclusivamente en esa base de pruebas: no se implementan endpoints de
+préstamos ni devoluciones en este bloque. Cuando se desarrollen, deberán bloquear
+los mismos artículos y revalidar su estado activo, conforme al ADR-002; entonces
+se verificará la carrera entre préstamo, actualización y baja.
+
+También se mide una búsqueda con 5.000 artículos sintéticos contra el cliente HTTP
+de pruebas de Laravel, con un límite de 300 ms. Esa medición local no incluye red
+ni sustituye la validación posterior del despliegue con el sembrador HTTP.
+Las operaciones de imágenes quedan para su bloque correspondiente; este bloque
+solo conserva el `cover_key` existente.
+
 ## Pruebas y verificación
 
 ### Preparación reproducible de PostgreSQL

@@ -2,7 +2,9 @@
 
 namespace App\Http\Responses;
 
+use App\Application\Exceptions\CatalogFailure;
 use App\Application\Exceptions\SecurityFailure;
+use App\Domain\Exceptions\CatalogViolation;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,8 +20,11 @@ final class ApiExceptionRenderer
             return null;
         }
         $details = [];
-        if ($exception instanceof SecurityFailure) {
+        if ($exception instanceof SecurityFailure || $exception instanceof CatalogFailure) {
             [$status, $code, $message] = [$exception->status, $exception->errorCode, $exception->getMessage()];
+        } elseif ($exception instanceof CatalogViolation) {
+            [$status, $code, $message] = [$exception->errorCode === 'ARTICLE_HAS_OPEN_LOANS' ? 409 : 422,
+                $exception->errorCode, $exception->getMessage()];
         } elseif ($exception instanceof ValidationException) {
             [$status, $code, $message] = [422, 'VALIDATION_ERROR', 'Los datos enviados no son válidos.'];
             foreach ($exception->errors() as $field => $issues) {
