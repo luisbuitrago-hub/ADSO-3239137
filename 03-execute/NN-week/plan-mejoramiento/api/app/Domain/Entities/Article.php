@@ -3,6 +3,7 @@
 namespace App\Domain\Entities;
 
 use App\Domain\Exceptions\CatalogViolation;
+use App\Domain\Exceptions\LoanViolation;
 use App\Domain\ValueObjects\ArticleReference;
 use App\Domain\ValueObjects\Quantity;
 use DateTimeImmutable;
@@ -45,6 +46,22 @@ final class Article
     public function deletedAt(): ?DateTimeImmutable
     {
         return $this->deletedAt;
+    }
+
+    public function withdraw(): void
+    {
+        if ($this->deletedAt !== null || $this->available->value < 1) {
+            throw new LoanViolation('ARTICLE_NOT_AVAILABLE', 'No hay unidades disponibles del artículo solicitado.');
+        }
+        $this->available = new Quantity($this->available->value - 1);
+    }
+
+    public function restock(): void
+    {
+        if ($this->available->value >= $this->total->value) {
+            throw new LoanViolation('VALIDATION_ERROR', 'La devolución no puede superar el total de unidades.');
+        }
+        $this->available = new Quantity($this->available->value + 1);
     }
 
     public function publicData(): array
