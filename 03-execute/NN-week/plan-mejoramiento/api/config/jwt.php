@@ -1,5 +1,8 @@
 <?php
 
+use PHPOpenSourceSaver\JWTAuth\Providers\Auth\Illuminate;
+use PHPOpenSourceSaver\JWTAuth\Providers\JWT\Lcobucci;
+
 return [
     /*
     |--------------------------------------------------------------------------
@@ -78,18 +81,13 @@ return [
     | JWT time to live
     |--------------------------------------------------------------------------
     |
-    | Specify the length of time (in minutes) that the token will be valid for.
-    | Defaults to 1 hour.
-    |
-    | You can also set this to null, to yield a never expiring token.
-    | Some people may want this behaviour for e.g. a mobile app.
-    | This is not particularly recommended, so make sure you have appropriate
-    | systems in place to revoke the token if necessary.
-    | Notice: If you set this to null you should remove 'exp' element from 'required_claims' list.
+    | El contrato de Kitchenware fija la vigencia en ocho horas (480 minutos).
+    | No se permiten tokens sin expiración ni sobrescritura mediante JWT_TTL.
     |
     */
 
-    'ttl' => (int) env('JWT_TTL', 60),
+    // Ocho horas fijas según api-contract.md; no depende del entorno.
+    'ttl' => 480,
 
     /*
     |--------------------------------------------------------------------------
@@ -151,6 +149,7 @@ return [
         'exp',
         'nbf',
         'sub',
+        'role',
         'jti',
     ],
 
@@ -294,7 +293,7 @@ return [
         |
         */
 
-        'jwt' => PHPOpenSourceSaver\JWTAuth\Providers\JWT\Lcobucci::class,
+        'jwt' => Lcobucci::class,
 
         /*
         |--------------------------------------------------------------------------
@@ -305,7 +304,7 @@ return [
         |
         */
 
-        'auth' => PHPOpenSourceSaver\JWTAuth\Providers\Auth\Illuminate::class,
+        'auth' => Illuminate::class,
 
         /*
         |--------------------------------------------------------------------------
