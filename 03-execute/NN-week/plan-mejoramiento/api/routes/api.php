@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\ArticleController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\NeighborController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -19,6 +20,9 @@ Route::prefix('v1')->group(function (): void {
 
     Route::middleware(['bearer', 'role:admin,operator'])->group(function (): void {
         Route::get('/categories', [CategoryController::class, 'index']);
+        Route::get('/neighbors', [NeighborController::class, 'index']);
+        Route::get('/neighbors/{id}', [NeighborController::class, 'show'])->whereUuid('id');
+        Route::post('/neighbors', [NeighborController::class, 'store']);
         Route::get('/articles', [ArticleController::class, 'index']);
         Route::get('/articles/{id}', [ArticleController::class, 'show'])->whereUuid('id');
     });

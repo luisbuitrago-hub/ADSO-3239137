@@ -198,6 +198,53 @@ ni sustituye la validación posterior del despliegue con el sembrador HTTP.
 Las operaciones de imágenes quedan para su bloque correspondiente; este bloque
 solo conserva el `cover_key` existente.
 
+## Gestión de vecinos
+
+| Método | Ruta bajo `/api/v1` | Roles |
+|---|---|---|
+| GET | `/neighbors` | `admin`, `operator` |
+| GET | `/neighbors/{id}` | `admin`, `operator` |
+| POST | `/neighbors` | `admin`, `operator` |
+
+Los tres endpoints requieren JWT Bearer y conservan los errores uniformes del
+contrato. No existen operaciones HTTP para actualizar o eliminar vecinos.
+
+El registro recibe `full_name` y `document_number`, asigna UUID v4 y devuelve
+únicamente `id`, `full_name` y `document_number` con HTTP 201. El nombre es texto
+obligatorio de hasta 200 caracteres; el documento, texto obligatorio de hasta 30.
+Se recortan espacios exteriores en ambos. La documentación no define un patrón
+numérico ni eliminación de separadores: el documento conserva ceros iniciales,
+letras, mayúsculas, espacios interiores y separadores. No se convierte a número.
+La unicidad sigue la restricción existente de PostgreSQL, sensible a mayúsculas.
+
+Un documento repetido tras recortar espacios produce `409 DOCUMENT_TAKEN`,
+sin reemplazar los datos del vecino anterior. El adaptador traduce también una
+colisión detectada por el índice único después de la consulta previa y conserva
+la transacción exterior mediante un savepoint. Los campos `id` y `active_loans`
+no pueden asignarse en el registro. El vecino no obtiene credenciales de acceso.
+
+La búsqueda admite `q` parcial por nombre o documento, sin distinguir mayúsculas
+en PostgreSQL, y paginación `page`/`size` (1 y 20 por defecto, máximo 50 por página).
+La respuesta contiene `items`, `page`, `size` y `total`. El orden es por nombre y
+UUID para estabilizar los empates. Los comodines `%`, `_` y `!` se buscan como
+texto literal. Los parámetros inválidos producen 422; los listados sin resultados
+devuelven un arreglo vacío.
+
+El detalle agrega `active_loans`: número de líneas de `loan_item` con
+`returned_at IS NULL`, pertenecientes a todos los préstamos del vecino. Incluye
+líneas vencidas y pendientes futuras, excluye devoluciones y préstamos de otras
+personas, y devuelve cero cuando no hay pendientes. No es un conteo de préstamos.
+El adaptador obtiene identidad y conteo en una sola consulta SQL, sin depender
+del estado actual de los artículos ni añadir columnas calculadas. Un vecino
+inexistente o un identificador de ruta inválido produce `404 NOT_FOUND`.
+
+Las pruebas de dominio y aplicación se ejecutan sin base de datos; las HTTP
+rápidas utilizan SQLite en memoria. La integración verifica el contrato y las
+restricciones sobre las migraciones PostgreSQL reales en el contenedor temporal.
+Las fixtures de préstamos son exclusivas de pruebas y se comparan antes y después
+de consultar el detalle para comprobar que no cambió el historial. No se agregan
+funcionalidades de préstamos ni devoluciones en este bloque.
+
 ## Pruebas y verificación
 
 ### Preparación reproducible de PostgreSQL
