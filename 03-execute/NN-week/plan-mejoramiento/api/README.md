@@ -84,6 +84,62 @@ Los secretos y las credenciales se gestionan mediante variables de entorno.
 
 Los archivos que contienen credenciales reales no deben incorporarse al repositorio.
 
+### Inicialización del administrador
+
+Configura localmente `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `JWT_SECRET` y
+`CORS_ORIGIN`. La plantilla `.env.example` no contiene credenciales iniciales.
+`JWT_SECRET` debe ser una clave aleatoria adecuada para el algoritmo de firma;
+para HS256 utiliza al menos 32 bytes. `CORS_ORIGIN` admite el origen exacto del
+frontend, sin comodines; si falta, no se permite ningún origen del navegador.
+
+Después de preparar las migraciones, el paso de inicialización del despliegue es:
+
+```bash
+php artisan kitchenware:initialize-admin
+```
+
+En producción requiere `--force`. El comando toma las credenciales exclusivamente
+de la configuración del entorno: no acepta contraseñas como argumentos y no las
+imprime. Es idempotente: conserva el hash del administrador existente y no cambia
+su contraseña aunque cambie `ADMIN_PASSWORD`. Rechaza elevar un operador existente
+o crear otro administrador cuando ya existe uno con un nombre diferente.
+Si faltan las variables o hay conflicto, termina con código de error.
+
+`composer setup` incluye este paso después de preparar la base para instalaciones
+nuevas. `DatabaseSeeder` utiliza la misma inicialización, sin usuarios de muestra
+ni contraseñas predeterminadas. Estas operaciones escriben en la base configurada:
+ejecútalas solo como parte del despliegue que corresponda. Las pruebas las ejecutan
+exclusivamente sobre SQLite en memoria o PostgreSQL temporal.
+
+### Contrato de autenticación y operadores
+
+- `POST /api/v1/auth/login` es público y devuelve `access_token`,
+  `token_type: Bearer`, `expires_in: 28800` y `role`.
+- La duración es de ocho horas y no se modifica mediante `JWT_TTL`. El JWT incluye
+  `sub`, `role` y las claims técnicas de firma/tiempo, sin nombres ni credenciales.
+- Los nombres de usuario se convierten a minúsculas y se recortan en sus extremos
+  al iniciar sesión, crear operadores e inicializar el administrador.
+- `POST /api/v1/users` requiere `Authorization: Bearer <token>` y rol `admin`.
+  Solo crea `operator`, devuelve HTTP 201 con `id`, `username`, `role` y asigna UUID v4.
+- Los nombres repetidos normalizados producen `409 USERNAME_TAKEN`, incluso si
+  la restricción de PostgreSQL detecta una colisión después de la consulta previa.
+- Intentar crear un `admin` produce `422 VALIDATION_ERROR`; un operador recibe
+  `403 FORBIDDEN_ROLE` antes de validar el cuerpo de la solicitud.
+- La autorización consulta el rol vigente del usuario en persistencia. Un token
+  ausente, malformado, vencido o inválido produce HTTP 401; no se aceptan tokens
+  mediante parámetros de consulta. No existe `/auth/me` porque no está documentado.
+- Las contraseñas se protegen con BCrypt y se conservan sus espacios. La creación
+  admite hasta 72 bytes para evitar truncamiento de BCrypt, incluidos caracteres
+  multibyte. No se devuelven contraseñas ni hashes.
+- Los errores de `/api/*` usan `code`, `message` en español y `details` como arreglo,
+  incluso sin `Accept: application/json`. Los errores inesperados no muestran
+  trazas ni SQL aun con depuración activada; sus logs solo contienen una etiqueta
+  genérica y el tipo de excepción, sin argumentos ni credenciales.
+
+Los casos de uso de seguridad dependen de puertos de usuarios, hashing, tokens
+e identificadores. Sus adaptadores Laravel se enlazan en `AppServiceProvider`.
+Los seis modelos y las migraciones existentes se conservan.
+
 ## Pruebas y verificación
 
 ### Preparación reproducible de PostgreSQL

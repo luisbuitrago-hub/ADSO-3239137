@@ -2,6 +2,14 @@
 
 namespace App\Providers;
 
+use App\Application\Ports\IdGenerator;
+use App\Application\Ports\PasswordHasher;
+use App\Application\Ports\TokenIssuer;
+use App\Application\Ports\UserRepository;
+use App\Infrastructure\Persistence\EloquentUserRepository;
+use App\Infrastructure\Security\BcryptPasswordHasher;
+use App\Infrastructure\Security\JwtTokenIssuer;
+use App\Infrastructure\Security\UuidGenerator;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -11,7 +19,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(UserRepository::class, EloquentUserRepository::class);
+        $this->app->bind(IdGenerator::class, UuidGenerator::class);
+        $this->app->bind(TokenIssuer::class, JwtTokenIssuer::class);
+        $this->app->bind(PasswordHasher::class, fn ($app) => new BcryptPasswordHasher($app['hash']->driver('bcrypt')));
     }
 
     /**
