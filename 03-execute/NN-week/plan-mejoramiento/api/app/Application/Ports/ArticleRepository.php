@@ -8,6 +8,8 @@ interface ArticleRepository
 {
     public function findActive(string $id, bool $forUpdate = false): ?Article;
 
+    public function findIncludingInactive(string $id, bool $forUpdate = false): ?Article;
+
     /** @return array{items: list<Article>, total: int} */
     public function search(?string $query, ?string $categoryId, int $page, int $size): array;
 

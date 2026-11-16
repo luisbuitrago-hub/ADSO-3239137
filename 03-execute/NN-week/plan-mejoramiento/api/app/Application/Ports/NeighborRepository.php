@@ -6,6 +6,8 @@ use App\Domain\Entities\Neighbor;
 
 interface NeighborRepository
 {
+    public function lock(string $id): ?Neighbor;
+
     public function documentTaken(string $documentNumber): bool;
 
     public function create(Neighbor $neighbor): void;

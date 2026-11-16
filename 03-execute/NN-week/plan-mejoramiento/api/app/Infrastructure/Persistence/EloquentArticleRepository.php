@@ -43,6 +43,17 @@ final class EloquentArticleRepository implements ArticleRepository
         return ['items' => $items, 'total' => $total];
     }
 
+    public function findIncludingInactive(string $id, bool $forUpdate = false): ?Article
+    {
+        $query = ArticleModel::withTrashed()->with('category')->whereKey($id);
+        if ($forUpdate) {
+            $query->lockForUpdate();
+        }
+        $model = $query->first();
+
+        return $model === null ? null : $this->toDomain($model);
+    }
+
     public function referenceTaken(string $reference): bool
     {
         return ArticleModel::where('reference', $reference)->exists();
@@ -74,7 +85,7 @@ final class EloquentArticleRepository implements ArticleRepository
     public function save(Article $article): void
     {
         $data = $article->publicData();
-        ArticleModel::whereKey($article->id)->update([
+        ArticleModel::withTrashed()->whereKey($article->id)->update([
             'name' => $data['name'], 'description' => $data['description'],
             'category_id' => $data['category']['id'], 'total_units' => $data['total_units'],
             'available_units' => $data['available_units'], 'deleted_at' => $article->deletedAt(),

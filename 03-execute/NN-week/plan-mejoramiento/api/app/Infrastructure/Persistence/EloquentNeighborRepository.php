@@ -12,6 +12,13 @@ use Illuminate\Support\Facades\DB;
 
 final class EloquentNeighborRepository implements NeighborRepository
 {
+    public function lock(string $id): ?Neighbor
+    {
+        $model = NeighborModel::whereKey($id)->lockForUpdate()->first();
+
+        return $model === null ? null : $this->toDomain($model);
+    }
+
     public function documentTaken(string $documentNumber): bool
     {
         return NeighborModel::where('document_number', $documentNumber)->exists();
