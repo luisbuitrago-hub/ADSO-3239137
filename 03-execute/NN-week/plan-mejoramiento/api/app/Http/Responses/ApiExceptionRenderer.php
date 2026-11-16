@@ -6,6 +6,7 @@ use App\Application\Exceptions\CatalogFailure;
 use App\Application\Exceptions\NeighborFailure;
 use App\Application\Exceptions\SecurityFailure;
 use App\Domain\Exceptions\CatalogViolation;
+use App\Domain\Exceptions\LoanViolation;
 use App\Domain\Exceptions\NeighborViolation;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
@@ -22,6 +23,15 @@ final class ApiExceptionRenderer
             return null;
         }
         $details = [];
+        if ($exception instanceof LoanViolation) {
+            $status = match ($exception->errorCode) {
+                'NOT_FOUND' => 404,
+                'ARTICLE_NOT_AVAILABLE', 'NEIGHBOR_HAS_OVERDUE', 'ITEM_ALREADY_RETURNED' => 409,
+                default => 422,
+            };
+
+            return response()->json(['code' => $exception->errorCode, 'message' => $exception->getMessage(), 'details' => []], $status);
+        }
         if ($exception instanceof SecurityFailure || $exception instanceof CatalogFailure || $exception instanceof NeighborFailure) {
             [$status, $code, $message] = [$exception->status, $exception->errorCode, $exception->getMessage()];
         } elseif ($exception instanceof NeighborViolation) {

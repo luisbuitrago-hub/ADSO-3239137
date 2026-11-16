@@ -245,6 +245,90 @@ Las fixtures de préstamos son exclusivas de pruebas y se comparan antes y despu
 de consultar el detalle para comprobar que no cambió el historial. No se agregan
 funcionalidades de préstamos ni devoluciones en este bloque.
 
+## Préstamos, devoluciones y vencimientos
+
+| Método | Ruta bajo `/api/v1` | Roles |
+|---|---|---|
+| POST | `/loans` | `admin`, `operator` |
+| GET | `/loans` | `admin`, `operator` |
+| GET | `/loans/{id}` | `admin`, `operator` |
+| POST | `/loans/{loan_id}/items/{item_id}/return` | `admin`, `operator` |
+| GET | `/loans/overdue` | `admin`, `operator` |
+
+El registro recibe `neighbor_id` y una lista `items` de una a tres líneas,
+cada una con `article_id`. Cada línea representa una unidad. Los identificadores
+repetidos, incluso variando mayúsculas, producen `422 DUPLICATE_ARTICLE_IN_LOAN`.
+La API genera UUID v4, toma el usuario autenticado y registra las fechas en UTC;
+el cliente no puede asignar `loaned_at`, `loaned_by_user_id`, `id` ni `status`.
+
+Cada vecino mantiene un máximo de tres líneas pendientes entre todos sus
+préstamos (`422 NEIGHBOR_LIMIT_EXCEEDED`). Si alguna está vencida, se rechaza
+el préstamo con `409 NEIGHBOR_HAS_OVERDUE`. Los artículos inexistentes o inactivos
+producen 404; la falta de inventario, `409 ARTICLE_NOT_AVAILABLE`.
+La fecha límite de cada línea es exactamente tres días en UTC después del préstamo.
+Al registrar las líneas se copian nombre, referencia y categoría del catálogo.
+Los cambios posteriores y la baja lógica no alteran esos valores históricos.
+
+El préstamo ejecuta una transacción: bloquea primero al vecino y después los
+artículos en orden de UUID, vuelve a comprobar vencimientos tras la espera,
+descuenta unidades y guarda préstamo y líneas. Cualquier fallo revierte todo,
+incluidas escrituras ya realizadas. Se reutiliza el gestor transaccional existente.
+
+La devolución verifica que la línea pertenezca al préstamo, bloquea vecino,
+artículo y línea en ese orden, y vuelve a comprobar `returned_at` bajo bloqueo.
+Actualiza únicamente esa fecha en la línea e incrementa una unidad disponible
+dentro de la misma transacción. La escritura además exige `returned_at IS NULL`.
+Una devolución repetida produce `409 ITEM_ALREADY_RETURNED`; ninguna devolución
+puede superar el total. Un artículo histórico ya inactivo puede devolverse sin
+reactivar su registro. No existen endpoints para editar o eliminar préstamos.
+
+Los estados `open`, `overdue` y `closed` se calculan a partir de líneas y fechas,
+sin columnas adicionales. En el instante exacto del vencimiento una línea sigue
+abierta; pasa a vencida cuando `due_at` es anterior al instante de consulta.
+La consulta de préstamos permite `neighbor_id`, `status`, `from`, `to`, `page`
+y `size` (1/20 por defecto, máximo 50). Las fechas `AAAA-MM-DD` son inclusivas en
+UTC; el rango invertido devuelve `422 INVALID_DATE_RANGE`. Los resultados se
+ordenan por fecha descendente y UUID para estabilizar empates.
+
+`/loans/overdue` está registrada antes de la ruta por UUID y devuelve únicamente
+líneas pendientes vencidas, con nombre histórico, vecino y `days_late` calculado
+en períodos completos de 24 horas. Se ordena por vencimiento más antiguo primero.
+No se implementan imágenes ni reportes en este bloque.
+
+### Verificación de concurrencia del ADR-002
+
+Además de `composer test`, ejecuta desde `api/`:
+
+```bash
+composer test:integration
+composer test:integration -- --filter LoanConcurrencyTest
+```
+
+Las pruebas funcionales HTTP se ejecutan tanto en SQLite en memoria como en
+PostgreSQL real. SQLite no se utiliza para acreditar concurrencia. Cada prueba
+concurrente crea una base `kitchenware_concurrency_*` dentro del contenedor
+temporal del runner, aplica las seis migraciones y utiliza fixtures confirmadas.
+La conexión se restringe al usuario de pruebas, localhost y al puerto temporal;
+no se reutiliza la base de desarrollo. Al terminar se cierran los procesos y
+se elimina exclusivamente esa base desechable; el runner elimina su contenedor.
+
+Dos procesos PHP ejecutan peticiones mediante el kernel HTTP de Laravel, con
+autenticación JWT, operadores distintos y conexiones PostgreSQL independientes.
+Una conexión de control retiene una fila hasta observar ambas peticiones activas
+esperando bloqueos en `pg_stat_activity`; después libera la compuerta. Las pruebas
+fallan si no observan esa superposición o si los resultados no cumplen el ADR.
+
+- Última unidad: exactamente HTTP 201 y 409; inventario cero y una línea pendiente.
+- Mismo vecino con dos pendientes: HTTP 201 y 422; exactamente tres pendientes.
+- Misma devolución: HTTP 200 y 409; disponibilidad incrementada exactamente una vez.
+- Atomicidad: un préstamo con disponibilidad parcial recibe 409, sin préstamos ni
+  líneas nuevas y con el inventario original conservado.
+
+También se prueban préstamo contra baja lógica, préstamo contra reducción de total,
+y un fallo simulado al insertar la segunda línea después de guardar préstamo y
+primera línea: ninguna escritura parcial sobrevive. Las pruebas imprimen evidencia
+resumida de las cuatro verificaciones del ADR, sin tokens ni credenciales.
+
 ## Pruebas y verificación
 
 ### Preparación reproducible de PostgreSQL
