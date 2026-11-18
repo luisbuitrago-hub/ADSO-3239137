@@ -24,7 +24,11 @@ final readonly class DateRange
 
     private static function parse(string $value): DateTimeImmutable
     {
-        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value, new DateTimeZone('UTC'));
+        try {
+            $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value, new DateTimeZone('UTC'));
+        } catch (\ValueError) {
+            $date = false;
+        }
         if ($date === false || $date->format('Y-m-d') !== $value) {
             throw new LoanViolation('INVALID_DATE_RANGE', 'Las fechas deben tener el formato AAAA-MM-DD y ser válidas.');
         }

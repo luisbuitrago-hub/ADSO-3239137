@@ -30,10 +30,19 @@ return [
 
     'disks' => [
 
+        'covers' => [
+            'driver' => 'local',
+            'root' => env('COVERS_DIR') ?: storage_path('app/covers'),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => true,
+            'report' => false,
+        ],
+
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],

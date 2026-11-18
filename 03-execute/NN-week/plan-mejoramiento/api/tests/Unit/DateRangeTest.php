@@ -20,7 +20,7 @@ class DateRangeTest extends TestCase
 
     public static function invalidRanges(): array
     {
-        return [['2026-02-29', null], ['2026-2-01', null], ['2026-11-16', '2026-11-15']];
+        return [['2026-02-29', null], ['2026-2-01', null], ['2026-11-16', '2026-11-15'], ["2026-01\0-01", null]];
     }
 
     #[DataProvider('invalidRanges')]
