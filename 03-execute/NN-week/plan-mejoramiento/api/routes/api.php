@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\Api\V1\ArticleController;
+use App\Http\Controllers\Api\V1\ArticleCoverController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\LoanController;
 use App\Http\Controllers\Api\V1\NeighborController;
+use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -31,9 +33,13 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/neighbors', [NeighborController::class, 'store']);
         Route::get('/articles', [ArticleController::class, 'index']);
         Route::get('/articles/{id}', [ArticleController::class, 'show'])->whereUuid('id');
+        Route::get('/articles/{id}/cover', [ArticleCoverController::class, 'show'])->whereUuid('id');
     });
 
     Route::middleware(['bearer', 'role:admin'])->group(function (): void {
+        Route::put('/articles/{id}/cover', [ArticleCoverController::class, 'store'])->whereUuid('id');
+        Route::delete('/articles/{id}/cover', [ArticleCoverController::class, 'destroy'])->whereUuid('id');
+        Route::get('/reports/most-borrowed', [ReportController::class, 'mostBorrowed']);
         Route::post('/articles', [ArticleController::class, 'store']);
         Route::put('/articles/{id}', [ArticleController::class, 'update'])->whereUuid('id');
         Route::delete('/articles/{id}', [ArticleController::class, 'destroy'])->whereUuid('id');

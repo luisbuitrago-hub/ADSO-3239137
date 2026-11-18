@@ -13,7 +13,7 @@ La API se diseña con PHP y Laravel, siguiendo los requisitos funcionales y téc
 
 ## Tecnologías
 
-- PHP
+- PHP 8.4 o superior compatible con Composer
 - Laravel
 - PostgreSQL 16
 - Composer
@@ -63,6 +63,47 @@ Los endpoints, sus métodos HTTP, los permisos de acceso y los formatos de respu
   "status": "ok"
 }
 ```
+
+## Imágenes y reporte histórico (bloque 6)
+
+Los 21 endpoints del contrato están implementados. La evidencia y las limitaciones
+de la verificación se detallan en [BACKEND_AUDIT.md](BACKEND_AUDIT.md).
+
+- `PUT /api/v1/articles/{id}/cover`: administrador; cuerpo `multipart/form-data`
+  con campo `file`; devuelve HTTP 200 con el artículo actualizado.
+- `DELETE /api/v1/articles/{id}/cover`: administrador; devuelve HTTP 204.
+- `GET /api/v1/articles/{id}/cover`: administrador u operador; devuelve los bytes
+  con el MIME validado, o HTTP 404 si el artículo o su imagen no están disponibles.
+- `GET /api/v1/reports/most-borrowed?from=AAAA-MM-DD&to=AAAA-MM-DD`:
+  administrador; devuelve las filas históricas, o una lista vacía.
+
+La carga acepta únicamente contenido JPG/PNG válido de hasta 2.097.152 bytes.
+No utiliza el nombre original: genera claves aleatorias opacas y almacena los
+archivos en el disco privado `covers`, por defecto `storage/app/covers`.
+`COVERS_DIR` permite configurar un directorio absoluto privado y escribible;
+no debe estar dentro de un directorio publicado por el servidor web. No se
+requiere un enlace público de almacenamiento. Se deshabilitan las rutas
+automáticas de publicación del disco local: las descargas pasan por JWT y roles.
+
+PHP 8.4 es el mínimo declarado porque permite procesar un PUT multipart real
+mediante el soporte nativo utilizado por Symfony. La integración comprueba esa
+solicitud por HTTP real, además del cliente de pruebas de Laravel.
+
+El reemplazo guarda el archivo nuevo antes de cambiar la referencia bajo bloqueo.
+El archivo anterior se elimina después del commit; un rollback retira el nuevo.
+La eliminación también espera al commit. No se modifican inventario ni snapshots.
+PostgreSQL y el sistema de archivos no comparten una transacción distribuida:
+una caída del proceso o un fallo al eliminar después del commit puede dejar un
+archivo privado huérfano. Ese fallo responde con un error genérico y conserva la
+referencia ya confirmada; si fue un reemplazo, conserva también su imagen nueva.
+La recuperación de esos huérfanos queda como procedimiento operativo pendiente.
+
+El reporte filtra por fecha del préstamo usando días inclusivos en UTC
+(`from` incluido, día siguiente a `to` excluido). Agrupa por UUID del artículo,
+nombre y categoría históricos, cuenta líneas, incluye artículos desactivados y
+ordena por cantidad descendente y nombre ascendente, con desempates estables.
+Un rango invertido o una fecha inválida devuelve HTTP 422. No consulta los nombres
+actuales del catálogo ni expone datos personales de vecinos.
 
 ## Reglas fundamentales
 

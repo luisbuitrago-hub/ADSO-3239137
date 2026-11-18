@@ -3,6 +3,7 @@
 namespace App\Http\Responses;
 
 use App\Application\Exceptions\CatalogFailure;
+use App\Application\Exceptions\CoverFailure;
 use App\Application\Exceptions\NeighborFailure;
 use App\Application\Exceptions\SecurityFailure;
 use App\Domain\Exceptions\CatalogViolation;
@@ -32,7 +33,7 @@ final class ApiExceptionRenderer
 
             return response()->json(['code' => $exception->errorCode, 'message' => $exception->getMessage(), 'details' => []], $status);
         }
-        if ($exception instanceof SecurityFailure || $exception instanceof CatalogFailure || $exception instanceof NeighborFailure) {
+        if ($exception instanceof SecurityFailure || $exception instanceof CatalogFailure || $exception instanceof NeighborFailure || $exception instanceof CoverFailure) {
             [$status, $code, $message] = [$exception->status, $exception->errorCode, $exception->getMessage()];
         } elseif ($exception instanceof NeighborViolation) {
             [$status, $code, $message] = [422, 'VALIDATION_ERROR', $exception->getMessage()];

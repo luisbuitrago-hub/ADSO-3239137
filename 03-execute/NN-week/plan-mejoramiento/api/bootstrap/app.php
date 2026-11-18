@@ -1,6 +1,7 @@
 <?php
 
 use App\Application\Exceptions\CatalogFailure;
+use App\Application\Exceptions\CoverFailure;
 use App\Application\Exceptions\NeighborFailure;
 use App\Application\Exceptions\SecurityFailure;
 use App\Domain\Exceptions\CatalogViolation;
@@ -26,7 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias(['bearer' => AuthenticateBearer::class, 'role' => RequireRole::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->dontReport([SecurityFailure::class, CatalogFailure::class, CatalogViolation::class, NeighborFailure::class, NeighborViolation::class, LoanViolation::class]);
+        $exceptions->dontReport([SecurityFailure::class, CatalogFailure::class, CatalogViolation::class, NeighborFailure::class, NeighborViolation::class, LoanViolation::class, CoverFailure::class]);
         $exceptions->dontFlash(['password', 'password_hash', 'current_password', 'password_confirmation']);
         $exceptions->render(fn (Throwable $exception, Request $request) => app(ApiExceptionRenderer::class)->render($exception, $request));
         $exceptions->report(function (Throwable $exception) {
