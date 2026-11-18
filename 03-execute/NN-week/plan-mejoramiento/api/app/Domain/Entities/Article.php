@@ -18,7 +18,7 @@ final class Article
         private Category $category,
         private Quantity $total,
         private Quantity $available,
-        private readonly ?string $coverKey = null,
+        private ?string $coverKey = null,
         private ?DateTimeImmutable $deletedAt = null,
     ) {
         $this->validate($name, $description, $total, $available);
@@ -46,6 +46,11 @@ final class Article
     public function deletedAt(): ?DateTimeImmutable
     {
         return $this->deletedAt;
+    }
+
+    public function setCoverKey(?string $key): void
+    {
+        $this->coverKey = $key;
     }
 
     public function withdraw(): void

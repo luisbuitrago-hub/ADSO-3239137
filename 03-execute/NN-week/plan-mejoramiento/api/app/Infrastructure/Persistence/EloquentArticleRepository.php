@@ -97,6 +97,13 @@ final class EloquentArticleRepository implements ArticleRepository
         return DB::table('loan_item')->where('article_id', $articleId)->whereNull('returned_at')->exists();
     }
 
+    public function setCoverKey(string $id, ?string $key): void
+    {
+        if (ArticleModel::whereKey($id)->update(['cover_key' => $key]) !== 1) {
+            throw new CatalogFailure('NOT_FOUND', 404, 'El artículo solicitado no existe.');
+        }
+    }
+
     private function toDomain(ArticleModel $model): Article
     {
         return new Article($model->id, $model->name, $model->description, new ArticleReference($model->reference),

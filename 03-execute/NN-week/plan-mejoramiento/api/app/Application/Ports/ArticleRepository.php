@@ -19,5 +19,7 @@ interface ArticleRepository
 
     public function save(Article $article): void;
 
+    public function setCoverKey(string $id, ?string $key): void;
+
     public function hasOpenLoans(string $articleId): bool;
 }

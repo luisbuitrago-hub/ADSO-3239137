@@ -11,4 +11,16 @@ final class LaravelTransactionManager implements TransactionManager
     {
         return DB::transaction($operation, attempts: 3);
     }
+
+    public function afterCommit(callable $operation): void
+    {
+        DB::afterCommit($operation);
+    }
+
+    public function afterRollback(callable $operation): void
+    {
+        if (DB::transactionLevel() > 0) {
+            DB::afterRollBack($operation);
+        }
+    }
 }
