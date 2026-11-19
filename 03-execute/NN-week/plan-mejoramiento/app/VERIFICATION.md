@@ -1,7 +1,8 @@
 # Evidencia del frontend — bloque 8.1
 
 Esta primera sección conserva la evidencia histórica de 8.1. El estado vigente
-del catálogo y vecinos, las pruebas y límites del **bloque 8.2** se documentan al final.
+de cada bloque se conserva por separado. La implementación, pruebas y límites
+del **bloque 8.3** se documentan en la última sección.
 
 Fecha local: 2026-11-18, America/Bogota. Rama main y Git limpio al iniciar.
 app/ no existía. Se revisaron especificación, plan, arquitectura, contrato, tareas,
@@ -199,3 +200,155 @@ Siguen pendientes préstamos, devoluciones, vencidos, imágenes/portadas, report
 gestión de operadores y despliegue Docker de React, así como page/ y tool/.
 El frontend completo y T-22 no se declaran terminados. Todos los cambios de 8.2
 se limitan a app/. No se ejecutó git add, git commit, git push ni cambio de rama.
+
+## Bloque 8.3 — préstamos, devoluciones y vencimientos
+
+Fecha: 2026-11-19 (UTC). Git limpio en main antes de modificar archivos. Se revisaron
+spec.md, api-contract.md, data-model.md, architecture.md, tasks.md, ADR-002/003,
+las solicitudes/controladores, entidades Loan/LoanItem/Neighbor, casos de uso y
+adaptador PostgreSQL reales, además de componentes, hooks y documentos de app/.
+Los resultados de 8.1/8.2 anteriores son evidencia histórica, no pendientes actuales.
+
+### Implementación y contrato
+
+- /loans: listado paginado, estado, vecino y rango inclusivo UTC. No existe q en
+  el contrato de préstamos; la búsqueda por texto pertenece al selector de vecinos.
+- /loans/new: vecino existente, búsqueda paginada de artículos y selección de uno
+  a tres artículos distintos, una unidad por línea; revisión y confirmación.
+- /loans/:id: vecino, fechas UTC, estado calculado por API, snapshots históricos,
+  disponibilidad actual consultada aparte y devolución individual confirmada.
+- /overdue: listado no paginado de líneas vencidas con vecino, nombre histórico,
+  fecha límite, días completos de atraso y acceso al detalle para devolver.
+- Ambos roles tienen acceso; se mantienen JWT en memoria, invalidación 401,
+  permanencia de sesión válida ante 403, rutas privadas y servicios compartidos.
+
+Se integran exactamente POST/GET /loans, GET /loans/{id}, POST
+/loans/{loan_id}/items/{item_id}/return y GET /loans/overdue bajo /api/v1.
+El POST de creación no añade quantity, fechas, usuario ni estado. El POST de
+retorno no tiene cuerpo y consume una respuesta LoanItem, no un préstamo completo.
+Después del éxito se consultan de nuevo préstamo, artículos y pendientes del vecino.
+No hay incrementos de stock optimistas, edición ni eliminación de préstamos.
+
+La validación local del máximo de tres incluye todas las líneas pendientes previas,
+no tres préstamos. La elegibilidad consulta el detalle del vecino y GET /loans con
+status=overdue/neighbor_id/size=1. Si esa lectura falla, no permite confirmar. La API
+revalida dentro de la transacción ante cualquier cambio simultáneo. Las mutaciones
+no se reintentan automáticamente y tienen guardia síncrona contra doble envío.
+Un 409 al devolver exige refrescar el estado; cancelar tras error también refresca.
+Ante pérdida de conexión se advierte que el resultado puede ser incierto.
+
+### Cobertura ejecutada
+
+La tabla de resultados finales aparece al cierre de esta sección. Vitest conserva
+las pruebas previas y añade casos para ambos roles, payload exacto/Bearer, vecino
+seleccionado desde detalle, búsquedas, cero disponibilidad, duplicados de selección,
+máximo de tres, pendientes anteriores, vencimientos, elegibilidad inaccesible,
+409/422 con detalles por campo, conexión incierta y prevención de envíos dobles.
+También verifica filtros UTC, paginación, snapshots, devolución confirmada/cancelada,
+foco, actualización de stock/estado/pendientes, artículo fuera del catálogo activo,
+conflicto de retorno, vencidos, carga/vacío/red y 401/403/404. El vencimiento de exp
+con temporizadores simulados permanece cubierto en la suite de autenticación.
+El servicio rechaza UUID inválidos y respuestas incompletas.
+
+Playwright recorre selección, revisión, préstamo, devolución, cancelación, listado
+y vencimientos como admin y operator, en escritorio 1440x1000 y móvil 390x844.
+Usa teclado para confirmar y comprueba el foco al cancelar. Axe-core revisa las
+pantallas recorridas con WCAG 2 A/AA y 2.1 A/AA y comprueba ausencia de desbordamiento
+global; las tablas mantienen su propio desplazamiento. Las capturas de selección
+con datos simulados están en test-results/browser/**/loan-selection.png, ignoradas.
+Esto no equivale a una certificación de accesibilidad ni prueba manual con lectores.
+
+### Integración real aislada
+
+Se reutiliza tests/verify-api.py sin cambiar su aislamiento, la API ni infraestructura.
+Cada ejecución crea un proyecto Compose kitchenware-infra-test-* y volúmenes nuevos,
+credenciales efímeras y un Vite con puerto aleatorio. No consulta datos de desarrollo.
+El caso nuevo crea por HTTP su vecino, artículo y operador exclusivos del stack;
+usa React para registrar y devolver, y consultas reales para verificar:
+
+- Tres días exactos entre loaned_at y due_at.
+- Disponibilidad 1 → 0 → 1 y pendientes del vecino 0 → 1 → 0.
+- HTTP 409 ARTICLE_NOT_AVAILABLE ante otra solicitud sin disponibilidad.
+- Conservación del nombre histórico aunque el catálogo cambie de nombre.
+- Estado closed después de devolver y HTTP 409 ITEM_ALREADY_RETURNED ante un
+  retorno repetido, manteniendo disponibilidad 1.
+- Listado histórico y consulta de vencidos vacía. Se incorpora además la consulta
+  del préstamo en un rango UTC que comprende exclusivamente su día de registro.
+
+El verificador conserva las otras dos pruebas reales de login y catálogo/vecinos,
+comprueba con SELECT la conservación de la baja lógica y compara los metadatos de
+contenedores/volúmenes anteriores y las huellas de .env, sin mostrarlos. Retira solo
+sus contenedores/redes; conserva los volúmenes de prueba y no hace limpieza global.
+Las trazas de navegador real están desactivadas. No publicar diagnósticos reales.
+
+### Incidencias corregidas y límites
+
+Axe detectó diferencias entre texto visible y nombre accesible en botones de
+selección, devolución y detalle. Se corrigieron sin desactivar reglas. Las pruebas
+esperan las lecturas y el foco asíncrono, y usan el título real del login existente.
+
+El primer intento de navegador no pudo iniciar Chromium por bibliotecas ausentes.
+Se descargaron navegador, índices y bibliotecas únicamente en /tmp, sin instalar
+paquetes del sistema. La primera integración Docker se detuvo antes de ejecutar
+pruebas por una capa inexistente en la caché de BuildKit. Se creó un constructor
+exclusivo kitchenware-ui83-verification con caché separada, sin limpiar las capas ni
+recursos existentes; la integración pudo ejecutarse. Estas incidencias de entorno
+no se contabilizan como pruebas aprobadas. Se ejecutan navegador y API secuencialmente.
+
+**Límites reales:** los vencimientos positivos y el bloqueo correspondiente se
+comprueban mediante mocks fieles; no se envejecieron datos de PostgreSQL ni se
+cambió el reloj del sistema. La integración real comprueba vencidos vacíos. Tampoco
+se repitieron aquí las pruebas concurrentes PostgreSQL del backend: el 409 secuencial
+y la prevención del doble clic no prueban bloqueos entre procesos. ADR-002 se conserva
+sin cambios y su batería corresponde al backend. No se midió RNF-1 con 5.000 artículos.
+
+El estado general y days_late vienen de Laravel; la etiqueta de vencimiento de una
+línea en el detalle usa el reloj del navegador cada 30 s y puede discrepar si el equipo
+tiene una hora incorrecta. No controla autorizaciones ni reglas del servidor. Las
+lecturas son una instantánea; Actualizar vuelve a consultar los datos. No se añade
+polling de préstamos ni sincronización entre pestañas. El destino después del login
+conserva la ruta privada permitida; sus filtros no se restauran al perder la sesión.
+
+Siguen pendientes imágenes, reportes, gestión de operadores en UI, despliegue Docker
+React, comprobación remota con sesión personal GitHub, accesibilidad manual, page/ y
+tool/. Este bloque no declara terminado el frontend completo ni T-22. No hay cambios
+fuera de app/, migraciones, secretos ni nuevas dependencias. No se ejecutó git add,
+commit, push, creación de ramas ni alteración del historial.
+
+### Resultados finales
+
+| Comprobación         | Resultado                                    |
+| -------------------- | -------------------------------------------- |
+| npm run typecheck    | Aprobado                                     |
+| npm run lint         | Aprobado, sin advertencias                   |
+| npm test             | 112 aprobadas, 0 fallidas; 4 archivos        |
+| npm run test:e2e     | 14 aprobadas, 0 fallidas; escritorio y móvil |
+| npm run test:api     | 3 aprobadas, 0 fallidas; código de salida 0  |
+| npm run build        | Compilación de producción aprobada           |
+| npm run format:check | Aprobado                                     |
+| git diff --check     | Aprobado                                     |
+
+Total: **129 pruebas aprobadas**, incluidas las regresiones de 8.1/8.2. Se añaden
+34 casos Vitest, cuatro ejecuciones de navegador y un caso de integración real.
+Hay diez archivos ejecutables de pruebas (cuatro Vitest, tres .spec.ts y tres
+.real.ts), sin contar fixtures, configuración ni el runner Python.
+
+Último proyecto real: kitchenware-infra-test-3870bebf9be1. El caso de préstamo
+comprobó además el filtro inclusivo real de un solo día UTC. Una repetición previa
+imprimió todas las aprobaciones y conservación pero finalizó con señal 143; no se
+usó como evidencia de un comando exitoso. La última ejecución confirmó expresamente
+Integration command exit status: 0. El constructor exclusivo quedó detenido; se
+conservan su caché y los volúmenes aislados. No quedaron contenedores en ejecución.
+
+Comandos utilizados en este entorno para navegador e integración, ejecutados por
+separado desde app/ (las rutas temporales dependen de la preparación de Chromium):
+
+```sh
+LD_LIBRARY_PATH=/tmp/kitchenware-browser-libs/extracted/usr/lib/x86_64-linux-gnu PLAYWRIGHT_BROWSERS_PATH=/tmp/kitchenware-browser-cache npm run test:e2e
+BUILDX_BUILDER=kitchenware-ui83-verification LD_LIBRARY_PATH=/tmp/kitchenware-browser-libs/extracted/usr/lib/x86_64-linux-gnu PLAYWRIGHT_BROWSERS_PATH=/tmp/kitchenware-browser-cache npm run test:api
+```
+
+BUILDX_BUILDER es una solución local a la caché dañada de este entorno; no cambia
+el procedimiento del repositorio ni es necesario en un Docker sano. El constructor
+conservado puede volver a arrancar al construir. No se reparó ni eliminó la caché
+original del equipo.

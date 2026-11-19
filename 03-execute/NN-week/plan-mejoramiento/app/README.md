@@ -1,10 +1,10 @@
-# Kitchenware — Frontend React, bloques 8.1 y 8.2
+# Kitchenware — Frontend React, bloques 8.1, 8.2 y 8.3
 
 Resultados ejecutados y límites de verificación: [VERIFICATION.md](VERIFICATION.md).
 
 Base del frontend, inicio/cierre de sesión y navegación, junto con categorías,
-catálogo de artículos y registro/consulta de vecinos. **Préstamos, devoluciones,
-imágenes, vencidos y reportes siguen pendientes en la interfaz.**
+catálogo de artículos, registro/consulta de vecinos y préstamos, devoluciones y
+vencimientos. **Imágenes, reportes y gestión de operadores siguen pendientes en la interfaz.**
 No se modifican API, infraestructura, page/, tool/, secretos ni requisitos.
 
 ## Decisiones y estructura
@@ -21,10 +21,10 @@ app/
 │   ├── auth/          # Context, proveedor, validación de respuesta y vencimiento
 │   ├── components/    # AppShell, datos, formularios, paginación e iconos
 │   ├── hooks/         # Lecturas cancelables, mutaciones y parámetros de listado
-│   ├── pages/         # Login, inicio, categorías, artículos, vecinos y pendientes
+│   ├── pages/         # Login, catálogo, vecinos, préstamos y vencimientos
 │   ├── routes/        # Secciones y permisos visuales
-│   ├── services/      # HTTP, catálogo, vecinos y validaciones de formularios
-│   ├── types/         # Contratos reales de sesión, errores, catálogo y vecinos
+│   ├── services/      # HTTP, catálogo, vecinos, préstamos y validaciones
+│   ├── types/         # Contratos reales de sesión, catálogo, vecinos y préstamos
 │   ├── App.tsx        # Rutas públicas/privadas, título y foco
 │   ├── main.tsx       # Composición y límite de errores de arranque
 │   └── styles.css     # Diseño adaptable y estados de foco/error/carga
@@ -141,8 +141,10 @@ operaciones prohibidas en la API.
 | /neighbors         | Admin y operador | Listado, búsqueda y paginación         |
 | /neighbors/new     | Admin y operador | Registro                               |
 | /neighbors/:id     | Admin y operador | Detalle y artículos pendientes         |
-| /loans             | Admin y operador | Informativa                            |
-| /overdue           | Admin y operador | Informativa                            |
+| /loans             | Admin y operador | Listado, filtros y paginación          |
+| /loans/new         | Admin y operador | Selección, revisión y registro         |
+| /loans/:id         | Admin y operador | Historial, inventario y devolución     |
+| /overdue           | Admin y operador | Líneas vencidas y acceso a devolución  |
 | /reports           | Admin            | Informativa                            |
 | /users             | Admin            | Informativa                            |
 
@@ -262,9 +264,8 @@ capturar credenciales. No publicar diagnósticos de login real.
 
 ## Pendientes
 
-Imágenes, préstamos/devoluciones, vencidos, reportes y gestión de operadores requieren
-sus bloques funcionales. Solo esas tarjetas indican su estado pendiente; categorías,
-artículos y vecinos están disponibles. No se consultan ni inventan estadísticas.
+Imágenes, reportes y gestión de operadores requieren sus bloques funcionales.
+Categorías, artículos, vecinos, préstamos, devoluciones y vencimientos están disponibles. No se consultan ni inventan estadísticas.
 Quedan también integración Docker de React, despliegue estático, verificación
 remota con sesión GitHub y revisión de accesibilidad con tecnologías de asistencia.
 T-22 y el frontend completo no están terminados.
@@ -272,3 +273,59 @@ T-22 y el frontend completo no están terminados.
 Referencias: contrato en ../docs/api-contract.md, decisiones en ../docs/plan.md,
 [Vite](https://vite.dev/guide/), [React Router](https://reactrouter.com/start/declarative/installation)
 y [Vitest](https://vitest.dev/guide/).
+
+## Préstamos, devoluciones y vencimientos — bloque 8.3
+
+Ambos roles usan las rutas /loans, /loans/new, /loans/:id y /overdue. Desde el detalle
+de un vecino se puede iniciar un préstamo con ese vecino seleccionado o consultar
+sus préstamos. Los identificadores de vecino del listado enlazan al registro real;
+la API no incluye su nombre en cada préstamo. El detalle obtiene el vecino aparte.
+
+| Endpoint bajo /api/v1                        | Uso                                                           |
+| -------------------------------------------- | ------------------------------------------------------------- |
+| POST /loans                                  | neighbor_id e items: [{article_id}], sin cantidades ni fechas |
+| GET /loans                                   | status, neighbor_id, from, to, page y size; sin búsqueda q    |
+| GET /loans/{id}                              | Estado calculado por API y snapshots de las líneas            |
+| POST /loans/{loan_id}/items/{item_id}/return | Sin cuerpo; devuelve la línea actualizada                     |
+| GET /loans/overdue                           | Líneas vencidas sin paginación ni filtros adicionales         |
+
+El contrato permite entre uno y tres artículos distintos, **una unidad por línea**.
+No hay campo quantity ni devolución parcial de una línea. El máximo de tres cuenta
+todas las líneas pendientes del vecino, incluidas las vencidas y las de otros
+préstamos. Antes de revisar se consultan active_loans y los préstamos vencidos de
+ese vecino. El catálogo muestra existencias reales, impide agregar duplicados y
+artículos sin disponibilidad y permite retirar selecciones. Se busca por nombre o
+descripción y se pagina el catálogo; el selector de vecinos busca nombre/documento
+y también pagina. El registro exige una revisión y confirmación separadas.
+
+Laravel calcula los tres días y vuelve a comprobar pendientes, vencimientos e
+inventario dentro de las transacciones y bloqueos de ADR-002. La comprobación del
+navegador es informativa: otro operador puede cambiar el resultado antes del POST.
+No se descuenta inventario en memoria ni se modifica el stock mediante PUT.
+
+El detalle usa los nombres, referencias y categorías históricos de loan_item;
+consultar el inventario actual no sustituye esos datos. Tras registrar o devolver
+se vuelven a consultar el préstamo, el vecino y cada artículo. Al volver al listado
+se hace una lectura nueva. Un artículo que ya no figure en el catálogo activo no
+impide consultar su historial ni tramitar una línea pendiente autorizada por API.
+
+Solo las líneas con returned_at nulo ofrecen devolución. La confirmación recibe el
+foco; cancelar lo devuelve al botón inicial. Hay bloqueo síncrono del doble envío.
+Un error de devolución requiere consultar el estado actualizado antes de confirmar
+otra vez; no hay reintentos de escritura automáticos. Ante un fallo de red, revisar
+los préstamos porque el servidor podría haber guardado la operación. Los errores
+422 muestran los detalles de validación; 409 conserva la selección para corregirla.
+401 usa el cierre de sesión común y 403 conserva una sesión válida.
+
+Todas las fechas se presentan en UTC. from/to se envían como fechas inclusivas UTC.
+El estado del préstamo y days_late proceden de Laravel. La indicación de una línea
+vencida en el detalle compara due_at con el reloj local cada 30 segundos; puede
+variar si el reloj del equipo está desajustado. No autoriza ni bloquea operaciones.
+Actualizar vuelve a consultar el estado del servidor. Los días de atraso pueden
+ser cero cuando aún no se ha completado el primer día desde el vencimiento.
+
+Tipos y validación de respuestas: src/types/loans.ts y src/services/loans.ts.
+useLoans reutiliza el cliente JWT; useRemote y useMutation mantienen cancelación,
+errores y prevención de duplicados. No hay dependencias nuevas ni cambios de API.
+Las pruebas y sus límites se registran en VERIFICATION.md; no se alteran el reloj
+del sistema ni datos de desarrollo para preparar vencimientos.
