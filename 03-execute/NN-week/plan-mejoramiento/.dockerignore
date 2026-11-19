@@ -1,0 +1,24 @@
+**
+!api/
+!api/**
+!infra/
+!infra/docker/
+!infra/docker/**
+# Nunca enviar secretos ni artefactos del equipo al daemon/build cache.
+api/.env
+api/.env.*
+api/auth.json
+api/vendor
+api/node_modules
+api/storage/**
+api/bootstrap/cache/**
+api/public/storage
+api/public/hot
+**/.git
+**/*.key
+**/*.pem
+**/*.log
+**/.phpunit.cache
+**/__pycache__
+infra/.env
+infra/.env.*
