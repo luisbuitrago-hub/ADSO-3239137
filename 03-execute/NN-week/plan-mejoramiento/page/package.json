@@ -1,0 +1,23 @@
+{
+  "name": "kitchenware-page",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node --test --test-isolation=none tests/*.test.mjs",
+    "test:e2e": "playwright test",
+    "check": "node scripts/check.mjs",
+    "format:check": "prettier --check .",
+    "test:integration": "node scripts/verify-app.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1",
+    "axe-core": "4.14.1",
+    "prettier": "3.10.1"
+  }
+}

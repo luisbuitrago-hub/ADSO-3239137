@@ -1,0 +1,6 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+# El repositorio ignora globalmente este nombre; conservar el lock de pruebas.
+!package-lock.json
