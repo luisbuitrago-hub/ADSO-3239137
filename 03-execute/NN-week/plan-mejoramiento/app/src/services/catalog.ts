@@ -142,3 +142,5 @@ export function catalogApi(client: HttpClient) {
       ),
   }
 }
+
+export { article as parseArticle }

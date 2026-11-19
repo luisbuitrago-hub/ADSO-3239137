@@ -165,9 +165,7 @@ describe('Inicio de sesión y navegación', () => {
     await user.click(within(screen.getByRole('navigation')).getByRole('link', { name: 'Reportes' }))
     expect(await screen.findByRole('heading', { name: 'Reportes' })).toBeVisible()
     expect(
-      screen.getByText('Esta sección todavía no permite consultar ni registrar información.', {
-        exact: false,
-      }),
+      screen.getByText('Selecciona un rango de fechas para consultar el historial.'),
     ).toBeVisible()
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })

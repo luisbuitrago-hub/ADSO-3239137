@@ -69,7 +69,12 @@ export function createHttpClient(options: HttpOptions = {}) {
         if (auth === handlers) auth = {}
       }
     },
-    async request<T>(path: string, init: RequestInit = {}, authenticated = true): Promise<T> {
+    async request<T>(
+      path: string,
+      init: RequestInit = {},
+      authenticated = true,
+      format: 'json' | 'image' = 'json',
+    ): Promise<T> {
       const pathname = path.split('?')[0]
       if (!/^\/[a-z0-9][a-z0-9/_-]*$/i.test(pathname) || path.includes('#'))
         throw new Error('Ruta API inválida.')
@@ -85,7 +90,10 @@ export function createHttpClient(options: HttpOptions = {}) {
       }, options.timeoutMs ?? 15000)
       try {
         const headers = new Headers(init.headers)
-        headers.set('Accept', 'application/json')
+        headers.set(
+          'Accept',
+          format === 'image' ? 'image/jpeg, image/png, application/json' : 'application/json',
+        )
         if (init.body && !(init.body instanceof FormData))
           headers.set('Content-Type', 'application/json')
         if (token) headers.set('Authorization', `Bearer ${token}`)
@@ -99,6 +107,23 @@ export function createHttpClient(options: HttpOptions = {}) {
         })
         if (response.status === 401 && token) auth.onUnauthorized?.(token)
         if (response.status === 204) return undefined as T
+        if (response.ok && format === 'image') {
+          const mime = response.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase()
+          if (mime !== 'image/png' && mime !== 'image/jpeg')
+            throw new ApiError(
+              response.status,
+              'INVALID_RESPONSE',
+              'El servicio no devolvió una imagen JPG o PNG.',
+            )
+          const blob = await response.blob()
+          if (blob.size < 1 || blob.size > 2097152)
+            throw new ApiError(
+              response.status,
+              'INVALID_RESPONSE',
+              'La imagen recibida no tiene un tamaño válido.',
+            )
+          return blob as T
+        }
         let body: unknown
         try {
           body = await response.json()

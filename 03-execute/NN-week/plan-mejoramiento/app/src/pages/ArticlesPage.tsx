@@ -6,6 +6,8 @@ import { useCatalog } from '../hooks/useCatalog'
 import { useRemote } from '../hooks/useRemote'
 import { useListParams } from '../hooks/useListParams'
 
+import { ArticleCover } from '../components/ArticleCover'
+
 export function ArticlesPage() {
   const { session } = useAuth()
   const api = useCatalog()
@@ -130,7 +132,10 @@ export function ArticlesPage() {
                   <tbody>
                     {state.data.items.map((item) => (
                       <tr key={item.id}>
-                        <th scope="row">{item.name}</th>
+                        <th scope="row">
+                          <ArticleCover id={item.id} name={item.name} coverKey={item.cover_key} />
+                          {item.name}
+                        </th>
                         <td>{item.reference}</td>
                         <td>{item.category.name}</td>
                         <td>

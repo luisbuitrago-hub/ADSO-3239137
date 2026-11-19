@@ -6,6 +6,9 @@ import { useCatalog } from '../hooks/useCatalog'
 import { useRemote } from '../hooks/useRemote'
 import { useMutation } from '../hooks/useMutation'
 
+import { ArticleCover } from '../components/ArticleCover'
+import { CoverEditor } from '../components/CoverEditor'
+
 export function ArticleDetailPage() {
   const { id = '' } = useParams()
   const { session } = useAuth()
@@ -27,6 +30,7 @@ export function ArticleDetailPage() {
         state: { flash: 'Artículo desactivado correctamente. Su historial se conserva.' },
       })
   }
+  const [coverNotice, setCoverNotice] = useState<{ id: string; message: string } | null>(null)
   const item = state.data
   return (
     <>
@@ -34,6 +38,11 @@ export function ArticleDetailPage() {
         ← Volver al catálogo
       </Link>
       <Flash />
+      {coverNotice?.id === id && (
+        <p className="notice" role="status">
+          {coverNotice.message}
+        </p>
+      )}
       {state.loading ? (
         <Loading label="Cargando artículo…" />
       ) : state.error ? (
@@ -107,6 +116,18 @@ export function ArticleDetailPage() {
                   </button>
                 </div>
               </section>
+            )}
+            <ArticleCover id={item.id} name={item.name} coverKey={item.cover_key} />
+            {session?.role === 'admin' && (
+              <CoverEditor
+                id={item.id}
+                hasCover={item.cover_key !== null}
+                onEditing={() => setCoverNotice(null)}
+                onSaved={(message) => {
+                  setCoverNotice(message ? { id, message } : null)
+                  state.reload()
+                }}
+              />
             )}
             <section className="detail-panel" aria-label="Información del artículo">
               <h2>Información del artículo</h2>
