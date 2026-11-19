@@ -8,6 +8,16 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 describe('Cliente HTTP y contrato de sesión', () => {
+  it('permite espacios y puntos en búsquedas codificadas sin permitir traversal de rutas', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response({ items: [] }))
+    vi.stubGlobal('fetch', fetchMock)
+    await createHttpClient().request('/articles?q=olla+grande+..+%25_%21')
+    expect(new URL(fetchMock.mock.calls[0][0]).searchParams.get('q')).toBe('olla grande .. %_!')
+    await expect(createHttpClient().request('/../health')).rejects.toThrow('Ruta API inválida')
+    await expect(createHttpClient().request('/articles#fragment')).rejects.toThrow(
+      'Ruta API inválida',
+    )
+  })
   it.each([
     'https://host/api/v1?token=no',
     'https://user:secret@host/api/v1',

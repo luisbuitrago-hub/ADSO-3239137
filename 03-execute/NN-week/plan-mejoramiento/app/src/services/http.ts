@@ -70,7 +70,8 @@ export function createHttpClient(options: HttpOptions = {}) {
       }
     },
     async request<T>(path: string, init: RequestInit = {}, authenticated = true): Promise<T> {
-      if (!/^\/[a-z0-9][a-z0-9/_?=&%-]*$/i.test(path) || path.includes('..'))
+      const pathname = path.split('?')[0]
+      if (!/^\/[a-z0-9][a-z0-9/_-]*$/i.test(pathname) || path.includes('#'))
         throw new Error('Ruta API inválida.')
       const token = authenticated ? auth.getToken?.() : undefined
       const controller = new AbortController()
