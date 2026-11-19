@@ -1,3 +1,4 @@
+import { ServiceStatus } from '../components/ServiceStatus'
 import { Link } from 'react-router'
 import { useAuth } from '../auth/context'
 import { Icon } from '../components/Icon'
@@ -92,6 +93,7 @@ export function HomePage() {
           </div>
         </aside>
       </div>
+      <ServiceStatus />
     </>
   )
 }

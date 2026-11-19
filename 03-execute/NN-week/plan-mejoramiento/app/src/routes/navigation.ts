@@ -50,6 +50,7 @@ export const modules: {
     description: 'Consulta el historial de los artículos más solicitados.',
     icon: 'reports',
     adminOnly: true,
+    available: true,
   },
   {
     path: '/users',
@@ -57,6 +58,7 @@ export const modules: {
     description: 'Administra el acceso de quienes gestionan los préstamos.',
     icon: 'users',
     adminOnly: true,
+    available: true,
   },
 ]
 export const roleName: Record<Role, string> = { admin: 'Administrador', operator: 'Operador' }

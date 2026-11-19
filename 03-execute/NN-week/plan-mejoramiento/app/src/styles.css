@@ -1624,3 +1624,27 @@ details > summary {
     flex-direction: column;
   }
 }
+
+.article-cover {
+  display: block;
+  width: 100%;
+  max-width: 28rem;
+  height: 16rem;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 0.75rem;
+  margin-block: 1rem;
+}
+table .article-cover {
+  width: 6rem;
+  height: 4rem;
+  margin: 0 0 0.5rem;
+}
+.cover-placeholder {
+  font-size: 0.85rem;
+  font-weight: normal;
+  color: var(--muted, #536760);
+}
+input[type='file'] {
+  max-width: 100%;
+}

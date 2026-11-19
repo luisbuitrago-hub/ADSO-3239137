@@ -4,7 +4,7 @@ import { useAuth } from './auth/context'
 import { AppShell } from './components/AppShell'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
-import { ModulePage, NotFoundPage } from './pages/ModulePage'
+import { NotFoundPage } from './pages/ModulePage'
 import { modules } from './routes/navigation'
 import { AccessDenied } from './components/DataViews'
 import { CategoriesPage } from './pages/CategoriesPage'
@@ -19,6 +19,9 @@ import { LoansPage } from './pages/LoansPage'
 import { LoanFormPage } from './pages/LoanFormPage'
 import { LoanDetailPage } from './pages/LoanDetailPage'
 import { OverduePage } from './pages/OverduePage'
+
+import { ReportsPage } from './pages/ReportsPage'
+import { OperatorsPage } from './pages/OperatorsPage'
 
 function RequireAuth() {
   const { session } = useAuth()
@@ -68,14 +71,11 @@ export function App() {
             <Route path="/neighbors/new" element={<NeighborFormPage />} />
             <Route path="/neighbors/:id" element={<NeighborDetailPage />} />
             <Route element={<RequireAdmin />}>
+              <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/users" element={<OperatorsPage />} />
               <Route path="/articles/new" element={<ArticleFormPage />} />
               <Route path="/articles/:id/edit" element={<ArticleFormPage />} />
             </Route>
-            {modules
-              .filter((module) => !module.available)
-              .map((module) => (
-                <Route path={module.path} element={<ModulePage />} key={module.path} />
-              ))}
           </Route>
         </Route>
         <Route path="/" element={<Navigate to="/home" replace />} />
