@@ -35,12 +35,14 @@ export const modules: {
     title: 'Préstamos y devoluciones',
     description: 'Gestiona la entrega y el regreso de cada utensilio.',
     icon: 'loans',
+    available: true,
   },
   {
     path: '/overdue',
     title: 'Préstamos vencidos',
     description: 'Consulta los artículos pendientes de devolución.',
     icon: 'overdue',
+    available: true,
   },
   {
     path: '/reports',
@@ -60,10 +62,14 @@ export const modules: {
 export const roleName: Record<Role, string> = { admin: 'Administrador', operator: 'Operador' }
 export const safeReturnPath = (value: unknown) =>
   typeof value === 'string' &&
-  (['/home', ...modules.map((module) => module.path), '/articles/new', '/neighbors/new'].includes(
-    value,
-  ) ||
-    /^\/(articles|neighbors)\/[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}(\/edit)?$/i.test(
+  ([
+    '/home',
+    ...modules.map((module) => module.path),
+    '/articles/new',
+    '/neighbors/new',
+    '/loans/new',
+  ].includes(value) ||
+    /^\/(articles|neighbors|loans)\/[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}(\/edit)?$/i.test(
       value,
     ))
     ? value

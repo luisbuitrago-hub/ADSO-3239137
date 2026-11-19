@@ -67,6 +67,14 @@ export function ArticleDetailPage() {
                 </div>
               )}
             </div>
+            <div className="page-actions">
+              <Link className="button button-secondary" to="/loans/new">
+                Registrar préstamo
+              </Link>
+              <Link className="button button-secondary" to="/loans">
+                Consultar préstamos
+              </Link>
+            </div>
             {confirm && session?.role === 'admin' && (
               <section className="confirm-panel" aria-labelledby="confirm-title">
                 <h2 id="confirm-title">¿Desactivar este artículo?</h2>

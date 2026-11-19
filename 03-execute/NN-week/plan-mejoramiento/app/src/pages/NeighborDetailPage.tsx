@@ -31,6 +31,14 @@ export function NeighborDetailPage() {
                 <p className="muted">Información de registro y artículos pendientes.</p>
               </div>
             </div>
+            <div className="page-actions">
+              <Link className="button button-primary" to={`/loans/new?neighbor_id=${id}`}>
+                Registrar préstamo para este vecino
+              </Link>
+              <Link className="button button-secondary" to={`/loans?neighbor_id=${id}`}>
+                Consultar préstamos del vecino
+              </Link>
+            </div>
             <section className="detail-panel" aria-label="Información del vecino">
               <h2>Información del vecino</h2>
               <dl className="detail-grid">

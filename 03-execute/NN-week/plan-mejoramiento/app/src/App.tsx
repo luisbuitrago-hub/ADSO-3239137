@@ -15,6 +15,11 @@ import { NeighborsPage } from './pages/NeighborsPage'
 import { NeighborDetailPage } from './pages/NeighborDetailPage'
 import { NeighborFormPage } from './pages/NeighborFormPage'
 
+import { LoansPage } from './pages/LoansPage'
+import { LoanFormPage } from './pages/LoanFormPage'
+import { LoanDetailPage } from './pages/LoanDetailPage'
+import { OverduePage } from './pages/OverduePage'
+
 function RequireAuth() {
   const { session } = useAuth()
   const location = useLocation()
@@ -55,6 +60,10 @@ export function App() {
             <Route path="/categories" element={<CategoriesPage />} />
             <Route path="/articles" element={<ArticlesPage />} />
             <Route path="/articles/:id" element={<ArticleDetailPage />} />
+            <Route path="/loans" element={<LoansPage />} />
+            <Route path="/loans/new" element={<LoanFormPage />} />
+            <Route path="/loans/:id" element={<LoanDetailPage />} />
+            <Route path="/overdue" element={<OverduePage />} />
             <Route path="/neighbors" element={<NeighborsPage />} />
             <Route path="/neighbors/new" element={<NeighborFormPage />} />
             <Route path="/neighbors/:id" element={<NeighborDetailPage />} />
