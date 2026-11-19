@@ -1,0 +1,10 @@
+# Contexto permitido: únicamente fuentes y configuración pública de compilación.
+**
+!package.json
+!package-lock.json
+!index.html
+!tsconfig.json
+!vite.config.ts
+!nginx.conf
+!src/
+!src/**
