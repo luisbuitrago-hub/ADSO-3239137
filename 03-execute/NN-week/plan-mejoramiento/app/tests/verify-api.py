@@ -45,7 +45,8 @@ def main():
             env = {key: value for key, value in os.environ.items() if not key.startswith(('VITE_', 'KITCHENWARE_TEST_'))}
             env.update({'API_PROXY_TARGET': stack.base, 'VITE_API_BASE_URL': '/api/v1', 'DEV_PORT': str(port)})
             with open(Path(directory) / 'vite.log', 'w+') as logs:
-                server = subprocess.Popen(['node', 'node_modules/vite/bin/vite.js'], cwd=APP, env=env, stdout=logs, stderr=logs)
+                # Aislar el servidor auxiliar y sus señales de cierre del runner/npm.
+                server = subprocess.Popen(['node', 'node_modules/vite/bin/vite.js'], cwd=APP, env=env, stdout=logs, stderr=logs, start_new_session=True)
                 base = f'http://127.0.0.1:{port}'
                 for _ in range(60):
                     if server.poll() is not None:

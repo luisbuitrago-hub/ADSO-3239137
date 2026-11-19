@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:api": "python3 tests/verify-api.py",
+    "test:docker": "python3 tests/verify-docker.py",
     "format:check": "prettier --check ."
   },
   "dependencies": {

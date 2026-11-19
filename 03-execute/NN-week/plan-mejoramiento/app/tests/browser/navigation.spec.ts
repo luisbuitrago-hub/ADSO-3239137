@@ -87,7 +87,9 @@ test('administrador navega, cierra sesión y no persiste JWT', async ({ page }, 
   }
   await page.getByRole('navigation').getByRole('link', { name: 'Reportes' }).click()
   await expect(page.getByRole('heading', { name: 'Reportes' })).toBeVisible()
-  await expect(page.getByText('La navegación está lista.', { exact: false })).toBeVisible()
+  await expect(
+    page.getByText('Selecciona un rango de fechas para consultar el historial.'),
+  ).toBeVisible()
   await page.getByRole('button', { name: 'Cerrar sesión' }).click()
   await expect(page.getByRole('heading', { name: 'Qué bueno tenerte aquí' })).toBeVisible()
   expect(

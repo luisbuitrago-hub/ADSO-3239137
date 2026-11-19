@@ -1,11 +1,12 @@
-# Kitchenware — Frontend React, bloques 8.1, 8.2 y 8.3
+# Kitchenware — Frontend React, bloques 8.1 a 8.4
 
 Resultados ejecutados y límites de verificación: [VERIFICATION.md](VERIFICATION.md).
 
 Base del frontend, inicio/cierre de sesión y navegación, junto con categorías,
 catálogo de artículos, registro/consulta de vecinos y préstamos, devoluciones y
-vencimientos. **Imágenes, reportes y gestión de operadores siguen pendientes en la interfaz.**
-No se modifican API, infraestructura, page/, tool/, secretos ni requisitos.
+vencimientos, imágenes privadas, reportes históricos y registro de operadores.
+Se conserva la API y se añade un complemento Compose para ejecutar React compilado.
+No se modifican datos de desarrollo, secretos, requisitos, page/ ni tool/.
 
 ## Decisiones y estructura
 
@@ -145,8 +146,8 @@ operaciones prohibidas en la API.
 | /loans/new         | Admin y operador | Selección, revisión y registro         |
 | /loans/:id         | Admin y operador | Historial, inventario y devolución     |
 | /overdue           | Admin y operador | Líneas vencidas y acceso a devolución  |
-| /reports           | Admin            | Informativa                            |
-| /users             | Admin            | Informativa                            |
+| /reports           | Admin            | Reporte histórico por fechas UTC       |
+| /users             | Admin            | Registro de operadores                 |
 
 Son rutas del navegador, no endpoints adicionales del backend. Operadores no ven
 administración; el acceso directo también muestra restricción. Sin sesión, las
@@ -264,11 +265,10 @@ capturar credenciales. No publicar diagnósticos de login real.
 
 ## Pendientes
 
-Imágenes, reportes y gestión de operadores requieren sus bloques funcionales.
-Categorías, artículos, vecinos, préstamos, devoluciones y vencimientos están disponibles. No se consultan ni inventan estadísticas.
-Quedan también integración Docker de React, despliegue estático, verificación
-remota con sesión GitHub y revisión de accesibilidad con tecnologías de asistencia.
-T-22 y el frontend completo no están terminados.
+Las pantallas del contrato están implementadas. La evidencia y sus límites se
+registran por bloque en VERIFICATION.md. Quedan rendimiento con 5.000 artículos,
+accesibilidad manual, comprobación remota privada con sesión GitHub, page/ y tool/.
+No se declara terminada la entrega completa ni toda la tarea T-22.
 
 Referencias: contrato en ../docs/api-contract.md, decisiones en ../docs/plan.md,
 [Vite](https://vite.dev/guide/), [React Router](https://reactrouter.com/start/declarative/installation)
@@ -329,3 +329,96 @@ useLoans reutiliza el cliente JWT; useRemote y useMutation mantienen cancelació
 errores y prevención de duplicados. No hay dependencias nuevas ni cambios de API.
 Las pruebas y sus límites se registran en VERIFICATION.md; no se alteran el reloj
 del sistema ni datos de desarrollo para preparar vencimientos.
+
+## Imágenes, reportes y operadores — bloque 8.4
+
+| Endpoint bajo /api/v1       | Pantalla y permisos                                              |
+| --------------------------- | ---------------------------------------------------------------- |
+| GET /articles/{id}/cover    | Catálogo/detalle, ambos roles                                    |
+| PUT /articles/{id}/cover    | Detalle, administrador                                           |
+| DELETE /articles/{id}/cover | Detalle con confirmación, administrador                          |
+| GET /reports/most-borrowed  | /reports, administrador                                          |
+| POST /users                 | /users, administrador; siempre role=operator                     |
+| GET /health                 | Comprobación explícita desde Inicio; petición pública sin Bearer |
+
+La imagen se descarga mediante el cliente autenticado como Blob. El elemento img
+solo recibe una URL blob: local, nunca un token ni una ruta pública de almacenamiento.
+cover_key solo indica la existencia/versión y no se convierte en URL. Se revocan
+las URLs al cambiar imagen, reintentar o desmontar; se abortan consultas y se ignoran
+respuestas obsoletas. Sin cover_key no se pide el archivo; 404 ofrece la alternativa
+sin imagen. Otros errores permiten consultar de nuevo sin ocultar un 401/403.
+
+Administradores pueden subir o reemplazar por PUT multipart con el único campo
+file y eliminar tras confirmar. Se valida MIME JPG/PNG, tamaño no vacío y máximo
+2.097.152 bytes; Laravel valida el contenido real. El navegador establece el boundary
+multipart. Los binarios recibidos también deben tener MIME JPG/PNG y tamaño válido.
+Se conserva la política privada/no-store. El éxito actualiza el artículo y su imagen;
+el listado hace una consulta nueva al volver. No se guardan archivos en storage web.
+
+Reportes requiere ambas fechas válidas AAAA-MM-DD, inclusivas UTC, con final mayor
+o igual a inicial. No se consulta hasta enviar. Cambiar fechas oculta resultados
+anteriores y cancela su lectura. Se muestran las filas y el orden recibidos: cantidad
+descendente, después nombre histórico; no se recalculan cantidades ni se agrupa por
+el catálogo actual. Un artículo puede aparecer varias veces por cambios históricos.
+Los artículos desactivados pueden figurar y no se enlazan a un detalle activo supuesto.
+
+Operadores ofrece únicamente registro: usuario obligatorio de 1–120 caracteres,
+normalizado a minúsculas y sin espacios exteriores, contraseña obligatoria de máximo
+72 bytes y rol operator fijo. No se inventa longitud mínima, listado, edición ni baja.
+La contraseña es un input no controlado, se envía solo en el cuerpo de la solicitud
+y se vacía después de cada intento. No se incorpora al estado, URL, almacenamiento
+local/de sesión ni logs. No se puede impedir que un gestor de contraseñas externo
+actúe por decisión del usuario. 409 identifica nombre repetido; 422 muestra detalles;
+401 retira la sesión y 403 no invalida una sesión válida. Se impide doble envío.
+
+Los selectores de archivo, formularios y confirmaciones conservan etiquetas, foco,
+estados de error/carga, navegación por teclado y diseño móvil. Las rutas de reportes
+y operadores también se protegen al ingresar directamente como operador.
+
+## React compilado con Docker
+
+El archivo base infra/compose.yaml continúa ejecutando solo API y PostgreSQL. El
+complemento infra/compose.app.yaml incorpora app, sin modificar sus volúmenes ni
+montar el código del equipo. Después de configurar los secretos según infra/README.md,
+en una instalación autorizada, desde infra/:
+
+```sh
+docker compose -f compose.yaml -f compose.app.yaml up --build -d --wait --wait-timeout 180
+```
+
+app publica 127.0.0.1:5173 por defecto, configurable con APP_BIND_ADDRESS/APP_PORT.
+No ejecutar ese comando sobre contenedores existentes sin revisar proyecto/puertos;
+las verificaciones de este bloque usan exclusivamente proyectos aleatorios aislados.
+En Codespaces abrir el puerto privado del servicio app. El navegador usa el mismo
+origen HTTPS reenviado y /api/v1 pasa por Nginx hacia api:8080; no necesita conocer
+el puerto de Laravel ni habilitar CORS abierto. No se verificó la sesión GitHub remota.
+
+La construcción usa npm ci y el lockfile, compila React y sirve dist mediante Nginx
+sin privilegios en 8080. No hay Vite ni Node en runtime. app/.dockerignore permite
+solo fuentes/configuración pública, excluyendo .env, node_modules, pruebas y artefactos.
+La imagen solo contiene archivos estáticos y nginx.conf; no recibe secretos de API.
+Las rutas SPA se resuelven a index.html y las rutas /api/v1 conservan errores JSON,
+Bearer y binarios privados. Los assets inexistentes devuelven 404. El proxy admite
+el sobrecoste multipart y Laravel mantiene el límite de 2 MB del archivo.
+Las etiquetas base de Docker son móviles; no se promete reproducción bit a bit.
+
+## Verificación del bloque 8.4
+
+```sh
+npm run typecheck
+npm run lint
+npm test
+npm run test:e2e
+npm run test:api
+npm run test:docker
+npm run format:check
+npm run build
+```
+
+Las suites de navegador, API y Docker se ejecutan por separado. test:api conserva
+Vite/proxy y Laravel/PostgreSQL aislados. test:docker comprueba tres servicios healthy
+con un comando y ejecuta el flujo de imágenes/reporte/operadores contra la compilación
+estática y Nginx en otro proyecto aislado, sin Vite. Ambos verificadores conservan
+volúmenes, comparan metadatos previos y huellas de .env, y no publican credenciales.
+El caso compartido prepara historia exclusivamente mediante HTTP; nunca cambia SQL
+de desarrollo ni el reloj del sistema. Resultados concretos en VERIFICATION.md.

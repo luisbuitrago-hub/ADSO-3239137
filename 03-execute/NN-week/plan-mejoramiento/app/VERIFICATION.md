@@ -1,8 +1,8 @@
-# Evidencia del frontend — bloque 8.1
+# Evidencia del frontend — bloques 8.1 a 8.4
 
 Esta primera sección conserva la evidencia histórica de 8.1. El estado vigente
 de cada bloque se conserva por separado. La implementación, pruebas y límites
-del **bloque 8.3** se documentan en la última sección.
+del **bloque 8.4** se documentan en la última sección.
 
 Fecha local: 2026-11-18, America/Bogota. Rama main y Git limpio al iniciar.
 app/ no existía. Se revisaron especificación, plan, arquitectura, contrato, tareas,
@@ -352,3 +352,204 @@ BUILDX_BUILDER es una solución local a la caché dañada de este entorno; no ca
 el procedimiento del repositorio ni es necesario en un Docker sano. El constructor
 conservado puede volver a arrancar al construir. No se reparó ni eliminó la caché
 original del equipo.
+
+## Bloque 8.4 — imágenes privadas, reportes, operadores y cierre funcional
+
+Fecha: 2026-11-19, America/Bogota. Git limpio al iniciar, rama main. Se revisaron
+spec.md, api-contract.md, architecture.md, tasks.md, ADR históricos, implementación
+Laravel de imágenes/reportes/usuarios, autenticación, cliente HTTP, hooks, componentes,
+pruebas y documentación existentes; también Compose y documentación de infraestructura.
+Las secciones anteriores conservan evidencia histórica; sus pendientes no describen
+el estado funcional actual. No se modifica API, contrato, migraciones ni secretos.
+
+### Implementación
+
+Imágenes en listado/detalle para ambos roles, descarga autenticada Blob mediante el
+cliente común y URLs locales blob: revocadas. No se construye una ruta pública desde
+cover_key ni se pasa JWT por URL. Se validan MIME/tamaño de respuesta y los archivos
+seleccionados JPG/PNG no vacíos, de máximo 2.097.152 bytes. Las consultas obsoletas se
+abortan y no crean URLs; limpiar/reintentar/desmontar revoca las anteriores. 404 de
+imagen muestra alternativa, mientras otros fallos muestran errores y reintento.
+
+PUT usa multipart con file y boundary generado por navegador. DELETE tiene confirmación,
+foco y bloqueo del doble envío. Se consulta de nuevo el artículo después de modificar
+su imagen. La portada no cambia inventario ni snapshots. La API sigue validando el
+contenido real. Se corrigió un fallo encontrado por integración real: un mensaje de
+éxito de la primera subida permanecía visible al iniciar el reemplazo. Ahora desaparece
+al editar y se asocia al identificador del artículo. Tiene comprobación de regresión.
+
+/reports requiere administrador y fechas válidas inclusivas UTC. No consulta sin
+rango enviado, oculta/cancela resultados anteriores al editar fechas, muestra carga,
+vacío y error, y conserva exactamente las filas/orden del servidor. Las claves incluyen
+artículo/nombre/categoría históricos; no agrupa ni recalcula cantidades en React ni
+supone que un artículo histórico siga activo.
+
+/users solo registra operadores como administrador. Envía username/password/role=operator,
+normaliza usuario y respeta 120 caracteres/72 bytes. No añade longitud mínima de
+contraseña ni endpoints de listado, edición o eliminación. Contraseña no controlada,
+sin almacenamiento persistente, estado React o logs; se vacía tras cada intento.
+Las rutas administrativas rechazan operadores antes de emitir la solicitud. 401
+usa cierre común; 403 conserva sesión; 409/422 permiten corregir el formulario.
+El gestor de contraseñas del navegador es externo a la persistencia de la aplicación.
+
+Inicio permite comprobar GET /health explícitamente sin Bearer; el resultado solo
+indica disponibilidad del endpoint HTTP, no certifica PostgreSQL. Esto completa el
+acceso desde las pantallas a los 21 endpoints documentados, sin endpoints adicionales.
+
+### Matriz de los 21 endpoints
+
+U = Vitest; B = navegador con respuestas simuladas; R = integración real Vite/proxy/
+Laravel/PostgreSQL. La existencia de cobertura no implica probar cada combinación
+posible de errores en cada despliegue. Docker tiene un caso adicional separado.
+
+| Método y ruta bajo /api/v1                   | Acceso / pantalla                        | Evidencia                |
+| -------------------------------------------- | ---------------------------------------- | ------------------------ |
+| POST /auth/login                             | Público, /login                          | U/B/R                    |
+| GET /health                                  | Público, botón de Inicio                 | U/R; comprobación Docker |
+| POST /users                                  | Admin, /users                            | U/B/R                    |
+| GET /categories                              | Ambos, /categories y selectores          | U/B/R                    |
+| GET /articles                                | Ambos, /articles y selector de préstamos | U/B/R                    |
+| GET /articles/{id}                           | Ambos, detalle                           | U/B/R                    |
+| POST /articles                               | Admin, registro                          | U/B/R                    |
+| PUT /articles/{id}                           | Admin, edición                           | U/B/R                    |
+| DELETE /articles/{id}                        | Admin, baja confirmada                   | U/B/R                    |
+| GET /articles/{id}/cover                     | Ambos, catálogo/detalle                  | U/B/R                    |
+| PUT /articles/{id}/cover                     | Admin, detalle                           | U/B/R                    |
+| DELETE /articles/{id}/cover                  | Admin, confirmación                      | U/B/R                    |
+| GET /neighbors                               | Ambos, listado y selector                | U/B/R                    |
+| GET /neighbors/{id}                          | Ambos, detalle y préstamos               | U/B/R                    |
+| POST /neighbors                              | Ambos, registro                          | U/B/R                    |
+| POST /loans                                  | Ambos, /loans/new                        | U/B/R                    |
+| GET /loans                                   | Ambos, filtros y listado                 | U/B/R                    |
+| GET /loans/{id}                              | Ambos, detalle                           | U/B/R                    |
+| POST /loans/{loan_id}/items/{item_id}/return | Ambos, confirmación                      | U/B/R                    |
+| GET /loans/overdue                           | Ambos, /overdue                          | U/B; R vacío             |
+| GET /reports/most-borrowed                   | Admin, /reports                          | U/B/R                    |
+
+Rutas verificadas contra api/routes/api.php y docs/api-contract.md. No se implementa
+/auth/me ni acciones de usuarios que el contrato no ofrece. La sesión mantiene JWT
+en memoria y ocho horas/exp; se conservan pruebas de expiración, 401 y roles de 8.1.
+
+### Cobertura y evidencia real
+
+La nueva suite Vitest comprueba lectura autenticada, ausencia de token en URL,
+revocación de URLs, respuesta obsoleta abortada, alternativa sin imagen, rechazo de
+un MIME de respuesta no permitido (SVG), multipart exacto, permisos, 401/403/404/422/500, errores de red,
+confirmación/cancelación de borrado, frontera de 2 MB y archivos inválidos. Reportes
+verifica filtros UTC, fechas reales (incluido año bisiesto), rango invertido, histórico,
+orden y agrupaciones separadas del mismo artículo, vacío y restricción administrativa.
+Operadores prueba normalización, rol fijo, límite en bytes, errores 401/403/409/422,
+contraseña vacía tras el intento, ausencia de almacenamiento y bloqueo del doble POST.
+
+Playwright añade cuatro ejecuciones (admin/operator, escritorio 1440x1000 y móvil
+390x844) que recorren imágenes/reporte/operadores con axe WCAG 2 A/AA y 2.1 A/AA,
+foco de confirmación, ausencia de desbordamiento global y regresiones anteriores.
+Se sustituyeron únicamente las expectativas antiguas que trataban Reportes como una
+pantalla pendiente. Los controles de autenticación y roles permanecen comprobados.
+Capturas simuladas: test-results/browser/**/report.png; ignoradas, sin credenciales.
+
+El caso real compartido prepara únicamente por HTTP sus artículos, vecino y préstamo
+propios. Comprueba subida, reemplazo con nueva clave opaca, eliminación, 404 posterior,
+contenido falso rechazado 422, lectura sin token 401 y permisos 403 de operador.
+Edita nombre/categoría del artículo histórico, devuelve y desactiva; el reporte de
+su día UTC conserva nombre/categoría originales y cuenta una línea. Registra un
+operador por UI, comprueba duplicado 409 y luego ingresa con ese operador para leer
+la imagen sin controles administrativos. No cambia fechas ni usa SQL para fixtures.
+
+La primera ejecución real detectó el mensaje obsoleto de reemplazo y falló; después
+de la corrección se volvió a ejecutar toda la suite. Los resultados finales de los
+comandos y proyectos reales se registran al cierre de esta sección. No se publican
+trazas ni credenciales reales o temporales; los diagnósticos quedan ignorados localmente.
+
+### Docker y límites de verificación
+
+compose.app.yaml añade app a la configuración existente, sin cambiar compose.yaml.
+Construcción por npm ci/lock y Nginx sin privilegios, API por proxy del mismo origen,
+rutas SPA y volumen de imágenes fuera del frontend. El contexto excluye .env y datos
+locales mediante whitelist. No se incorporan secretos a dist ni al entorno de build.
+El verificador Docker usa un proyecto aleatorio y puertos/volúmenes exclusivos;
+comprueba tres servicios saludables, ruta profunda SPA, errores JSON de API y el
+flujo real sobre React compilado. No levanta ni modifica el proyecto de desarrollo.
+
+Se preserva infra-postgres-1, que estaba activo y saludable al iniciar; los runners
+comparan identidad, arranque, montajes, puertos, reinicios, volúmenes y huellas de .env.
+Se descargaron Chromium y bibliotecas únicamente en /tmp, sin instalar paquetes del
+sistema. Se usa un constructor de pruebas propio kitchenware-ui84-verification para
+no intervenir la caché previamente dañada del constructor predeterminado.
+
+| Requisito | Alcance comprobado / límite                                                                                                    |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| RN-1      | Inventario real y conflictos secuenciales en regresión de préstamos; sin alterar reglas                                        |
+| RN-2      | Plazo real de tres días; máximo acumulado validado en UI/mocks; API conserva autoridad                                         |
+| RN-3      | Bloqueo por vencidos y listado positivo con mocks; integración real de vencidos vacía                                          |
+| RN-4      | Snapshots reales de nombre/categoría en reporte de artículo desactivado                                                        |
+| RN-5      | Baja lógica real y conservación de historia; UI sin edición/eliminación de préstamos                                           |
+| RN-6      | Fechas UTC, DTO técnicos en inglés y mensajes en español                                                                       |
+| RNF-1     | No se ejecutó rendimiento de 5.000 artículos; corresponde a evidencia de backend/tool                                          |
+| RNF-2     | No se repitió la batería PostgreSQL concurrente; doble clic y 409 secuencial no la sustituyen                                  |
+| RNF-3     | Sin persistencia/logs de contraseñas en app; validación real de login del operador; no auditoría integral de logs del servidor |
+| RNF-4     | Errores uniformes consumidos y probados; binarios seguros separados de JSON                                                    |
+| RNF-5     | Verificado en stack aislado: tres servicios saludables con un comando y flujo real sobre React compilado                       |
+
+Las capturas y axe no sustituyen accesibilidad manual con tecnologías de asistencia.
+No se comprobó el acceso HTTPS privado con sesión GitHub del usuario ni despliegues
+públicos: requieren terminación TLS externa. Las etiquetas Docker base son móviles,
+no se promete reproducción bit a bit. El reloj local solo orienta etiquetas vencidas;
+Laravel autoriza las operaciones. Las escrituras con fallo de red pueden haberse
+guardado: se advierte consultar antes de repetir. Sin endpoints de listado de usuarios,
+un registro de resultado incierto requiere revisar por medios administrativos antes
+de repetir; el frontend no inventa un GET de usuarios para resolverlo.
+
+Quedan comprobaciones manuales/remotas y evidencias de rendimiento/concurrencia del
+backend no repetidas en este bloque, page/ y tool/. Las pantallas funcionales del
+contrato están implementadas; no se declara completa toda la entrega ADSO/T-22.
+No se ejecutó git add, commit, push ni cambios de ramas/historial.
+
+### Resultados finales ejecutados
+
+| Comando                                              | Resultado final                              |
+| ---------------------------------------------------- | -------------------------------------------- |
+| npm test                                             | 148 aprobadas, 0 fallidas, cinco archivos    |
+| npm run test:e2e                                     | 18 aprobadas, 0 fallidas, escritorio y móvil |
+| npm run test:api                                     | Cuatro aprobadas, código de salida 0         |
+| npm run test:docker                                  | Una aprobada, código de salida 0             |
+| npm run typecheck                                    | Aprobado                                     |
+| npm run lint                                         | Aprobado, sin advertencias                   |
+| npm run build                                        | Producción compilada correctamente           |
+| npm run format:check                                 | Aprobado                                     |
+| Prettier sobre compose.app.yaml e infra/README.md    | Aprobado                                     |
+| AST Python de ambos verificadores y git diff --check | Aprobados                                    |
+
+Total: **171 ejecuciones de pruebas aprobadas**. Se conservan las regresiones de
+8.1–8.3 y se añaden 36 casos Vitest, cuatro ejecuciones de navegador, un caso real y
+otro sobre Docker estático. Hay 14 archivos ejecutables de prueba: cinco Vitest,
+cuatro .spec.ts, cuatro .real.ts y un .docker.ts, sin contar fixtures y runners.
+
+Proyectos finales: kitchenware-infra-test-b76fe8de6fa3 (Vite/proxy/API) y
+kitchenware-infra-test-3881146a193e (React/Nginx/API/PostgreSQL). En ambos se aprobaron
+las comprobaciones de conservación de recursos previos y .env. Docker además comprobó
+UID distinto de cero, ruta SPA profunda, health, 401 JSON, 404 JSON para /api/v1 y
+/api/v1/not-existing, y 404 para un asset inexistente. El proxy no convierte errores
+API en HTML de la SPA. Se ejecutó el flujo completo con reemplazo PNG por JPG.
+
+Una repetición real imprimió todas las aprobaciones/conservación y terminó con señal
+143, incidencia ya observada en 8.3. Se aisló la sesión del servidor Vite auxiliar
+mediante start_new_session y se repitió la suite, confirmando explícitamente salida 0.
+No se atribuye con certeza la señal al servidor ni se acredita estabilidad exhaustiva
+con ejecuciones simultáneas; las suites continúan ejecutándose secuencialmente.
+La prueba Docker final también confirmó explícitamente salida 0. Los fallos iniciales
+corregidos no se cuentan como aprobaciones de esas ejecuciones.
+
+El constructor kitchenware-ui84-verification se deja detenido, conservando caché y
+volúmenes de prueba. No se detiene infra-postgres-1 ni ningún recurso previo. Comandos
+utilizados desde app/, una vez preparado Chromium y bibliotecas temporales:
+
+```sh
+LD_LIBRARY_PATH=/tmp/kitchenware-browser-libs/extracted/usr/lib/x86_64-linux-gnu PLAYWRIGHT_BROWSERS_PATH=/tmp/kitchenware-browser-cache npm run test:e2e
+BUILDX_BUILDER=kitchenware-ui84-verification LD_LIBRARY_PATH=/tmp/kitchenware-browser-libs/extracted/usr/lib/x86_64-linux-gnu PLAYWRIGHT_BROWSERS_PATH=/tmp/kitchenware-browser-cache npm run test:api
+BUILDX_BUILDER=kitchenware-ui84-verification LD_LIBRARY_PATH=/tmp/kitchenware-browser-libs/extracted/usr/lib/x86_64-linux-gnu PLAYWRIGHT_BROWSERS_PATH=/tmp/kitchenware-browser-cache npm run test:docker
+```
+
+Las rutas /tmp y el constructor son preparación local de este entorno; no se necesitan
+esas variables en un equipo con Chromium/dependencias y Docker ya configurados.
+No se limpió la caché original dañada ni se modificaron paquetes del sistema.

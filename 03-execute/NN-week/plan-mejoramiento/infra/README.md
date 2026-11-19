@@ -2,14 +2,17 @@
 
 Esta carpeta ejecuta la API existente con PHP 8.4/Apache y PostgreSQL 16.
 Laravel conserva la propiedad del esquema, migraciones, categorías y administrador.
-No se implementa frontend ni se agregan colas, Redis u otros servicios.
+El archivo base conserva esos dos servicios. El complemento opcional compose.app.yaml
+añade React compilado con Nginx, descrito al final. No se agregan colas ni Redis.
 
 ## Requisitos y configuración inicial
 
 Docker Engine y Docker Compose v2 actual con soporte de service_healthy, --wait y
 build multietapa. Se necesita acceso a Docker Hub, repositorios Debian y paquetes
 Composer durante la construcción. No se necesita PHP/Composer/Node en el equipo
-para levantar la API. La verificación completa requiere Python 3 estándar.
+para levantar los servicios. El verificador de API requiere Python 3 estándar;
+las pruebas de navegador añaden Node y dependencias de app/, incluido Chromium
+(ver app/README.md).
 
 Desde `03-execute/NN-week/plan-mejoramiento/infra/`:
 
@@ -22,17 +25,17 @@ Completar `.env` localmente una sola vez, sin reutilizar secretos de desarrollo.
 Usar comillas simples en valores sensibles con `$`, `#` o espacios para evitar
 interpolación de Compose. No hay contraseñas predeterminadas.
 
-| Variable | Uso |
-|---|---|
-| POSTGRES_DB / POSTGRES_USER | Base y usuario iniciales; por defecto kitchenware |
-| POSTGRES_PASSWORD | Contraseña PostgreSQL obligatoria |
-| APP_KEY | base64: seguido de 32 bytes aleatorios codificados en base64 |
-| JWT_SECRET | Secreto aleatorio independiente de al menos 32 bytes |
-| ADMIN_USERNAME / ADMIN_PASSWORD | Administrador inicial; contraseña de hasta 72 bytes |
-| CORS_ORIGIN | Origen exacto del frontend; http://localhost:5173 por defecto |
-| APP_URL | URL pública API; http://localhost:8080 por defecto |
-| API_BIND_ADDRESS / API_PORT | Publicación en el equipo; 127.0.0.1:8080 por defecto |
-| POSTGRES_BIND_PORT | Solo para el archivo opcional de acceso local a PostgreSQL |
+| Variable                        | Uso                                                           |
+| ------------------------------- | ------------------------------------------------------------- |
+| POSTGRES_DB / POSTGRES_USER     | Base y usuario iniciales; por defecto kitchenware             |
+| POSTGRES_PASSWORD               | Contraseña PostgreSQL obligatoria                             |
+| APP_KEY                         | base64: seguido de 32 bytes aleatorios codificados en base64  |
+| JWT_SECRET                      | Secreto aleatorio independiente de al menos 32 bytes          |
+| ADMIN_USERNAME / ADMIN_PASSWORD | Administrador inicial; contraseña de hasta 72 bytes           |
+| CORS_ORIGIN                     | Origen exacto del frontend; http://localhost:5173 por defecto |
+| APP_URL                         | URL pública API; http://localhost:8080 por defecto            |
+| API_BIND_ADDRESS / API_PORT     | Publicación en el equipo; 127.0.0.1:8080 por defecto          |
+| POSTGRES_BIND_PORT              | Solo para el archivo opcional de acceso local a PostgreSQL    |
 
 Se puede generar APP_KEY con `openssl rand -base64 32` (anteponer `base64:`) y
 JWT_SECRET con `openssl rand -hex 32`. Guardarlos en el archivo privado y en el
@@ -65,10 +68,10 @@ curl --fail http://localhost:8080/api/v1/health
 La respuesta es `{"status":"ok"}`. El healthcheck del contenedor comprueba también
 PostgreSQL; el endpoint HTTP existente por sí solo no prueba la conexión.
 
-| Servicio | Ejecución | Puerto |
-|---|---|---|
-| postgres | Imagen oficial postgres:16 | 5432 solo en red interna |
-| api | PHP 8.4 Apache, usuario www-data | 8080 interno; 127.0.0.1:8080 en el equipo |
+| Servicio | Ejecución                        | Puerto                                    |
+| -------- | -------------------------------- | ----------------------------------------- |
+| postgres | Imagen oficial postgres:16       | 5432 solo en red interna                  |
+| api      | PHP 8.4 Apache, usuario www-data | 8080 interno; 127.0.0.1:8080 en el equipo |
 
 La red database es interna. La API pertenece además a http para publicar su puerto.
 La variante oficial PHP/Apache evita introducir un tercer servicio HTTP.
@@ -256,3 +259,58 @@ cambia la definición académica de terminado.
 
 Referencias técnicas: [imagen oficial PHP](https://hub.docker.com/_/php) y
 [orden de arranque de Compose](https://docs.docker.com/compose/how-tos/startup-order/).
+
+## React estático — complemento del bloque 8.4
+
+El archivo compose.app.yaml añade únicamente el servicio app. Se conservan intactos
+compose.yaml, sus redes, PostgreSQL, API y nombres de volúmenes persistentes.
+Después de completar la configuración privada inicial, desde infra/, en una
+instalación autorizada:
+
+```sh
+docker compose -f compose.yaml -f compose.app.yaml up --build -d --wait --wait-timeout 180
+```
+
+Es un solo comando para los tres servicios. No usarlo para reemplazar ni detener
+instancias de desarrollo activas. Revisar nombre de proyecto y puertos antes de un
+arranque manual; las pruebas descritas abajo usan otro proyecto y puertos aleatorios.
+El comando original docker compose up --build -d sigue disponible para API/PostgreSQL.
+
+| Variable pública opcional | Valor por defecto | Uso                                   |
+| ------------------------- | ----------------- | ------------------------------------- |
+| APP_BIND_ADDRESS          | 127.0.0.1         | Interfaz de publicación de React      |
+| APP_PORT                  | 5173              | Puerto del frontend; elegir uno libre |
+
+No se añaden secretos ni es necesario modificar .env para usar esos valores.
+React espera API saludable. Nginx sirve la SPA en 8080 sin privilegios y reenvía
+/api/v1 a api:8080 por la red http. PostgreSQL permanece solo en database. app no
+monta fuentes, imágenes privadas ni volúmenes de datos. Conserva Authorization y
+las cabeceras/bodies de las imágenes; el navegador usa URLs blob: después de una
+lectura autenticada. El límite Nginx es 3 MB para admitir el sobrecoste multipart;
+Laravel conserva la validación de archivos de 2 MB. No hay caché de proxy.
+
+La compilación multietapa usa el lock de app/ y npm ci; runtime contiene únicamente
+Nginx, dist y configuración pública. app/.dockerignore limita el contexto de build
+para excluir secretos, dependencias locales y pruebas. No se necesita Node en el
+host ni en runtime. Las etiquetas Docker base son móviles, como las del backend;
+no se garantiza reproducción bit a bit ni se incluye terminación TLS pública.
+
+En Codespaces mantener privado el puerto app y abrirlo desde Puertos. El tráfico
+API y frontend comparte el origen HTTPS reenviado; no es necesario publicar otro
+puerto ni usar Access-Control-Allow-Origin wildcard. El acceso remoto con sesión
+GitHub personal requiere verificación manual. Para despliegue público se necesita
+HTTPS delante del servicio; no publicar el puerto HTTP sin esa configuración.
+
+Desde app/:
+
+```sh
+npm run test:docker
+```
+
+El verificador tests/verify-docker.py reutiliza las protecciones de verify-stack.py:
+proyecto aleatorio, credenciales efímeras, puertos loopback aleatorios y volúmenes
+exclusivos. Comprueba que los tres servicios estén healthy y recorre React compilado,
+proxy Nginx, Laravel y PostgreSQL por navegador real. Compara los recursos y archivos
+.env anteriores al terminar, sin imprimir secretos. Solo retira sus contenedores y
+redes, conservando sus volúmenes; no realiza limpieza global. Las trazas y capturas
+de credenciales están desactivadas. Evidencia de ejecución en app/VERIFICATION.md.
