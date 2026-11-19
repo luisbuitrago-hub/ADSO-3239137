@@ -3,6 +3,7 @@
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import socket
 import subprocess
@@ -58,11 +59,18 @@ def main():
                 else:
                     raise RuntimeError('El proxy no pudo conectar con Laravel aislado.')
                 env.update({'KITCHENWARE_TEST_URL': base, 'KITCHENWARE_TEST_USERNAME': stack.env['ADMIN_USERNAME'], 'KITCHENWARE_TEST_PASSWORD': stack.admin_password})
-                result = subprocess.run(['node', 'node_modules/@playwright/test/cli.js', 'test', '--config', 'playwright.real.config.ts'], cwd=APP, env=env, capture_output=True, text=True, timeout=90)
+                result = subprocess.run(['node', 'node_modules/@playwright/test/cli.js', 'test', '--config', 'playwright.real.config.ts'], cwd=APP, env=env, capture_output=True, text=True, timeout=150)
                 # No emitir diagnósticos del navegador con credenciales/JWT reales de prueba.
                 if result.returncode:
                     raise RuntimeError('Falló la prueba real de React/proxy/API; no se muestran trazas con credenciales temporales.')
-                print('PASS: 1 prueba de navegador React/proxy/Laravel real (salud, login, 401, 403, 422, Bearer y cierre de sesión).')
+                summary = re.search(r'(\d+) passed', re.sub(r'\x1b\[[0-9;]*m', '', result.stdout))
+                if not summary:
+                    raise RuntimeError('No se pudo verificar el número de pruebas reales aprobadas.')
+                print(f'PASS: {summary.group(1)} pruebas de navegador React/proxy/Laravel real.')
+                deleted = stack.php('require "vendor/autoload.php"; $app = require "bootstrap/app.php"; $app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); echo DB::table("article")->whereNotNull("deleted_at")->count();')
+                if int(deleted) < 1:
+                    raise RuntimeError('No se pudo verificar la conservación de la baja lógica en la base aislada.')
+                print('PASS: la baja conserva la fila del artículo en PostgreSQL aislado.')
         finally:
             if server is not None:
                 server.terminate()

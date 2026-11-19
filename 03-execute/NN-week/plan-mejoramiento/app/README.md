@@ -1,9 +1,10 @@
-# Kitchenware — Frontend React, bloque 8.1
+# Kitchenware — Frontend React, bloques 8.1 y 8.2
 
 Resultados ejecutados y límites de verificación: [VERIFICATION.md](VERIFICATION.md).
 
-Base del frontend, inicio/cierre de sesión y navegación del sistema comunitario de
-préstamo de utensilios. **Los módulos de negocio todavía no están implementados.**
+Base del frontend, inicio/cierre de sesión y navegación, junto con categorías,
+catálogo de artículos y registro/consulta de vecinos. **Préstamos, devoluciones,
+imágenes, vencidos y reportes siguen pendientes en la interfaz.**
 No se modifican API, infraestructura, page/, tool/, secretos ni requisitos.
 
 ## Decisiones y estructura
@@ -18,11 +19,12 @@ Los iconos SVG y la tipografía del sistema no requieren descargas de terceros.
 app/
 ├── src/
 │   ├── auth/          # Context, proveedor, validación de respuesta y vencimiento
-│   ├── components/    # AppShell, navegación, identidad e iconos
-│   ├── pages/         # Login, inicio, pendientes y acceso restringido/404
+│   ├── components/    # AppShell, datos, formularios, paginación e iconos
+│   ├── hooks/         # Lecturas cancelables, mutaciones y parámetros de listado
+│   ├── pages/         # Login, inicio, categorías, artículos, vecinos y pendientes
 │   ├── routes/        # Secciones y permisos visuales
-│   ├── services/      # HTTP, errores, timeout, Bearer y respuesta 401
-│   ├── types/         # Contrato real de login, sesión y errores
+│   ├── services/      # HTTP, catálogo, vecinos y validaciones de formularios
+│   ├── types/         # Contratos reales de sesión, errores, catálogo y vecinos
 │   ├── App.tsx        # Rutas públicas/privadas, título y foco
 │   ├── main.tsx       # Composición y límite de errores de arranque
 │   └── styles.css     # Diseño adaptable y estados de foco/error/carga
@@ -127,20 +129,75 @@ Laravel consulta el rol vigente y sigue siendo la autoridad. Un cambio de rol en
 servidor puede requerir volver a ingresar para actualizar el menú; no habilita
 operaciones prohibidas en la API.
 
-| Ruta del frontend | Acceso           | Estado                                   |
-| ----------------- | ---------------- | ---------------------------------------- |
-| /login            | Público          | Login funcional                          |
-| /home             | Admin y operador | Inicio e identificación de sesión        |
-| /articles         | Admin y operador | Informativa, sin operaciones de catálogo |
-| /neighbors        | Admin y operador | Informativa                              |
-| /loans            | Admin y operador | Informativa                              |
-| /overdue          | Admin y operador | Informativa                              |
-| /reports          | Admin            | Informativa                              |
-| /users            | Admin            | Informativa                              |
+| Ruta del frontend  | Acceso           | Estado                                 |
+| ------------------ | ---------------- | -------------------------------------- |
+| /login             | Público          | Login funcional                        |
+| /home              | Admin y operador | Inicio e identificación de sesión      |
+| /categories        | Admin y operador | Categorías reales y acceso al filtro   |
+| /articles          | Admin y operador | Listado, búsqueda, filtro y paginación |
+| /articles/:id      | Admin y operador | Detalle e inventario                   |
+| /articles/new      | Admin            | Registro                               |
+| /articles/:id/edit | Admin            | Edición                                |
+| /neighbors         | Admin y operador | Listado, búsqueda y paginación         |
+| /neighbors/new     | Admin y operador | Registro                               |
+| /neighbors/:id     | Admin y operador | Detalle y artículos pendientes         |
+| /loans             | Admin y operador | Informativa                            |
+| /overdue           | Admin y operador | Informativa                            |
+| /reports           | Admin            | Informativa                            |
+| /users             | Admin            | Informativa                            |
 
 Son rutas del navegador, no endpoints adicionales del backend. Operadores no ven
 administración; el acceso directo también muestra restricción. Sin sesión, las
 rutas privadas llevan al login y conservan solo un destino interno permitido.
+
+## Catálogo y vecinos — bloque 8.2
+
+| Endpoints bajo /api/v1 | Uso y permisos                                             |
+| ---------------------- | ---------------------------------------------------------- |
+| GET /categories        | Consulta para ambos roles; sin mantenimiento de categorías |
+| GET /articles          | q por nombre/descripción, category_id, page y size         |
+| GET /articles/{id}     | Detalle activo con categoría, referencia y unidades        |
+| POST /articles         | Registro exclusivo admin                                   |
+| PUT /articles/{id}     | Edición exclusiva admin, sin enviar reference              |
+| DELETE /articles/{id}  | Baja lógica admin, con confirmación explícita              |
+| GET /neighbors         | q por nombre/documento, page y size                        |
+| GET /neighbors/{id}    | Detalle con active_loans                                   |
+| POST /neighbors        | Registro para admin y operator                             |
+
+Los listados conservan búsqueda/filtros/página en la URL; las búsquedas y cambios
+de filtro/tamaño vuelven a página 1. Tamaño predeterminado 20, máximo 50. Se muestran
+el total y las unidades disponibles reales. Las lecturas anteriores se cancelan
+al navegar o cambiar filtros y no reemplazan resultados más recientes. Solo se
+muestran datos recibidos; no hay estadísticas, categorías ni registros de muestra
+incorporados al código de producción.
+
+Artículos: nombre obligatorio hasta 250 caracteres, descripción hasta 200 y
+referencia hasta 50. Categoría procedente de GET /categories y total entero entre
+1 y 2147483647. No se asignan UUID, disponibilidad, cover_key ni deleted_at desde
+formularios. Referencia inmutable al editar; la disponibilidad la recalcula Laravel.
+No se permite localmente un total menor que las unidades pendientes conocidas al
+abrir el formulario. El servidor vuelve a verificar inventario/rol/unicidad ante
+cambios concurrentes y puede rechazar con 422 aunque la validación local pase.
+
+La baja solicita confirmación y conserva el historial. Un 409
+ARTICLE_HAS_OPEN_LOANS no quita el artículo de la pantalla; REFERENCE_TAKEN y
+DOCUMENT_TAKEN se muestran en su campo. Las respuestas 401 invalidan sesión, 403
+comunican permisos, 404 muestran inexistencia y 422 presentan errores por campo o
+regla. No se consultan ni administran portadas en este bloque.
+
+Vecinos: nombre obligatorio hasta 200 caracteres y documento entre 1 y 30, ambos
+con espacios exteriores recortados. El documento se conserva como texto: no se
+convierte a número, no se eliminan separadores y no se cambia su capitalización.
+No se agregan restricciones numéricas ajenas al contrato. active_loans se presenta
+como **artículos pendientes de devolución**, incluidos vencidos, no como número
+de préstamos. No hay acciones de edición ni eliminación de vecinos.
+
+Los formularios impiden solicitudes duplicadas, conservan valores si hay error
+y vuelven a consultar el detalle después de crear/editar, o el catálogo tras una
+baja. No hay reintentos automáticos de escrituras: ante fallo de conexión puede
+haberse confirmado la operación; revisar el listado antes de volver a guardar.
+Los controles administrativos se ocultan al operador y sus rutas directas también
+están restringidas. Estas restricciones visuales no reemplazan las de Laravel.
 
 ## Build, lint y pruebas
 
@@ -185,8 +242,10 @@ npm run test:api
 
 El script reutiliza el verificador de infra/ sin modificarlo: inicia un proyecto
 único con credenciales generadas, PostgreSQL y Laravel independientes, y un Vite
-en puerto libre. Chromium comprueba login, Bearer, 401, 403, 422, categorías y logout
-a través del proxy. El operador de pruebas se crea por la API únicamente en esa
+en puerto libre. Chromium comprueba login, Bearer, CORS, 401, 403, 422, categorías,
+CRUD de artículos permitido y registro/búsqueda de vecinos a través del proxy.
+Una consulta SELECT de solo lectura confirma la fila desactivada en la base aislada.
+Los operadores y datos de pruebas se crean por la API únicamente en esa
 base aislada. No se conecta al PostgreSQL de desarrollo ni lee sus credenciales;
 la preservación de archivos .env se comprueba mediante huellas internas, sin
 imprimirlas. Finalmente detiene solo sus servidores/contenedores/redes y conserva
@@ -203,9 +262,9 @@ capturar credenciales. No publicar diagnósticos de login real.
 
 ## Pendientes
 
-Catálogo/categorías, imágenes, vecinos, préstamos/devoluciones, vencidos, reportes
-y gestión de operadores requieren sus bloques funcionales. Las tarjetas actuales
-indican explícitamente su estado pendiente y no consultan ni inventan estadísticas.
+Imágenes, préstamos/devoluciones, vencidos, reportes y gestión de operadores requieren
+sus bloques funcionales. Solo esas tarjetas indican su estado pendiente; categorías,
+artículos y vecinos están disponibles. No se consultan ni inventan estadísticas.
 Quedan también integración Docker de React, despliegue estático, verificación
 remota con sesión GitHub y revisión de accesibilidad con tecnologías de asistencia.
 T-22 y el frontend completo no están terminados.

@@ -1,5 +1,8 @@
 # Evidencia del frontend — bloque 8.1
 
+Esta primera sección conserva la evidencia histórica de 8.1. El estado vigente
+del catálogo y vecinos, las pruebas y límites del **bloque 8.2** se documentan al final.
+
 Fecha local: 2026-11-18, America/Bogota. Rama main y Git limpio al iniciar.
 app/ no existía. Se revisaron especificación, plan, arquitectura, contrato, tareas,
 ADR, autenticación real, rutas Laravel, CORS y documentación de infraestructura.
@@ -89,3 +92,110 @@ el Codespace. No se modificó código de API, infraestructura, page/ o tool/.
 
 Todos los archivos fuente creados están en app/. No se modificaron requisitos,
 secretos reales, ramas ni historial. No se ejecutó git add, git commit ni git push.
+
+## Bloque 8.2 — Catálogo y vecinos
+
+Fecha local: 2026-11-18, America/Bogota. Git limpio al iniciar; rama main.
+Se revisaron spec, architecture, api-contract, data-model, tasks, controladores,
+validaciones y casos de uso Laravel, junto con el frontend/README/evidencia 8.1.
+Se conservaron autenticación, proxy, roles, diseño y dependencias sin agregar librerías.
+
+### Implementación y contrato
+
+| Endpoints bajo /api/v1 | Evidencia de frontend                                       |
+| ---------------------- | ----------------------------------------------------------- |
+| GET /categories        | Consulta, carga/vacío/error/reintento; filtro y formularios |
+| GET /articles          | q, category_id, page/size, total y unidades disponibles     |
+| GET /articles/{id}     | Detalle, inventario y recurso inexistente                   |
+| POST /articles         | Registro admin, UUID/disponibilidad asignados por backend   |
+| PUT /articles/{id}     | Edición admin sin enviar referencia, id o disponibilidad    |
+| DELETE /articles/{id}  | Confirmación/cancelación, 204 y protección 409              |
+| GET /neighbors         | Listado, búsqueda nombre/documento y paginación             |
+| GET /neighbors/{id}    | Datos y active_loans como unidades pendientes               |
+| POST /neighbors        | Registro admin/operator, documento de texto único           |
+
+Rutas reales: /categories, /articles, /articles/new, /articles/:id,
+/articles/:id/edit, /neighbors, /neighbors/new y /neighbors/:id. No son endpoints
+nuevos de Laravel. El operador no ve acciones administrativas y las rutas new/edit
+de artículos también lo restringen. No hay edición/eliminación de vecinos ni
+mantenimiento de categorías. No se consumen endpoints de imágenes o préstamos.
+
+Validaciones: longitudes 250/200/50 de artículos, categoría de la API, total entero
+1..2147483647 y mínimo conocido por unidades pendientes. La referencia se muestra
+readonly y se omite del PUT. Disponibilidad y cambios concurrentes los verifica
+Laravel. Vecinos: nombre 1..200, documento 1..30, recorte exterior sin convertir
+a número, eliminar separadores ni cambiar mayúsculas. Registro asigna UUID en API.
+
+Se presentan 401/403/404/409/422 y errores de conexión; no se confirman escrituras
+cuando se desconoce el resultado. Los valores del formulario se conservan si falla.
+No hay reintento automático de POST/PUT/DELETE. Se bloquean envíos duplicados y
+las lecturas viejas no reemplazan una búsqueda más reciente. Tras escribir se
+consulta de nuevo el detalle/listado; no se inventan filas ni cantidades locales.
+
+### Resultados realmente ejecutados
+
+| Comprobación                                 | Resultado                                                         |
+| -------------------------------------------- | ----------------------------------------------------------------- |
+| npm test                                     | 78 aprobadas, 0 fallidas, 3 archivos; conserva regresiones 8.1    |
+| npm run test:e2e                             | 10 aprobadas, 0 fallidas, escritorio/móvil; conserva las 6 de 8.1 |
+| npm run test:api                             | 2 pruebas de navegador reales aprobadas, 0 fallidas               |
+| Total frontend                               | 90 pruebas aprobadas en las ejecuciones indicadas                 |
+| npm run typecheck                            | Aprobado                                                          |
+| npm run lint                                 | Aprobado, cero advertencias                                       |
+| npm run format:check                         | Aprobado                                                          |
+| npm run build                                | Aprobado                                                          |
+| Sintaxis Python del runner; git diff --check | Aprobados                                                         |
+
+Los mocks usan el contrato real y solo existen en tests/. Se verificaron categorías,
+filtros, búsqueda literal, paginación/tamaño, detalle, registro, edición, baja y su
+cancelación, inventario inválido, referencia duplicada, permisos directos y visuales,
+vecinos, ceros/separadores, pendientes, documentos duplicados, formularios vacíos,
+carga, vacíos, errores y navegación. Se comprobó una respuesta tardía cancelada y
+una escritura de resultado incierto que no se reintenta automáticamente.
+
+Chromium comprobó los ciclos de artículos/vecinos en 1440x1000 y 390x844, teclado,
+formularios, tablas con desplazamiento dentro de su región y axe sobre categorías,
+catálogo, formularios y detalle de vecino, sin infracciones detectadas con las
+reglas A/AA configuradas. No equivale a certificación WCAG ni a revisión manual
+con todas las tecnologías de asistencia.
+
+### Integración real y seguridad
+
+El stack aislado kitchenware-infra-test-5a52f128355d ejecutó React, proxy Vite,
+Laravel y PostgreSQL reales. Se verificó desde UI el registro, edición, consulta,
+búsqueda y desactivación de artículo, y registro/búsqueda/detalle de vecino como
+operador. Inventario nuevo/cambio de total fue 4/4 y después 5/5; el vecino nuevo
+tuvo cero pendientes. Una consulta SELECT en esa base comprobó que la fila del
+artículo desactivado permanece con deleted_at; GET del artículo devuelve 404.
+Las protecciones 409 por préstamos abiertos y los conteos mayores de cero se
+comprobaron con mocks fieles; no se crearon préstamos reales en este bloque.
+La regresión de login conserva CORS, JWT y respuestas 401/403/422 reales.
+
+El runner obtiene el número de pruebas de la salida real y no lo fija en uno.
+Solo realiza el SELECT de conservación dentro del nuevo contenedor de prueba.
+No modificó código API/infra, credenciales reales, base de desarrollo ni puertos
+públicos. Reutilizó el aislamiento existente y comprobó metadatos/huellas de los
+recursos y .env previos, sin mostrar valores. Contenedores/redes de pruebas se
+retiraron y sus volúmenes se conservaron. JWT sigue solo en memoria, sin logs.
+
+### Problemas corregidos y límites
+
+La validación previa de URL del cliente impedía búsquedas codificadas con espacios
+y puntos. Ahora valida la ruta antes del signo ?, mantiene el origen fijo y rechaza
+traversal/fragmentos, permitiendo q literal codificado. Tiene prueba de regresión.
+Se evitó que una búsqueda anterior tardía sobrescriba la actual y que categorías
+cargadas después pierdan la selección del filtro. Las tablas conservan los títulos
+de columna y su desplazamiento horizontal en móvil.
+
+Los totales/pendientes de validación local son los conocidos al abrir el formulario;
+el servidor revalida ante concurrencia. Si falla la red durante una escritura,
+revisar el listado antes de repetir: abortar en el navegador no revierte el servidor.
+Mantener las suites de navegador y API real secuenciales por el límite intermitente
+de carga concurrente observado en 8.1; no se declara corregido/acreditado ese escenario.
+La URL privada reenviada con la sesión personal de GitHub sigue sin verificación
+remota automática. Las dependencias y secretos no cambiaron en este bloque.
+
+Siguen pendientes préstamos, devoluciones, vencidos, imágenes/portadas, reportes,
+gestión de operadores y despliegue Docker de React, así como page/ y tool/.
+El frontend completo y T-22 no se declaran terminados. Todos los cambios de 8.2
+se limitan a app/. No se ejecutó git add, git commit, git push ni cambio de rama.
