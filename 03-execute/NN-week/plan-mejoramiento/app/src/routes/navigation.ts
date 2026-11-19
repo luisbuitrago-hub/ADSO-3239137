@@ -7,18 +7,28 @@ export const modules: {
   description: string
   icon: IconName
   adminOnly?: boolean
+  available?: boolean
 }[] = [
   {
     path: '/articles',
     title: 'Artículos',
     description: 'Consulta el catálogo y conoce los utensilios de la comunidad.',
     icon: 'articles',
+    available: true,
+  },
+  {
+    path: '/categories',
+    title: 'Categorías',
+    description: 'Consulta las categorías del catálogo comunitario.',
+    icon: 'articles',
+    available: true,
   },
   {
     path: '/neighbors',
     title: 'Vecinos',
     description: 'Encuentra a las personas que hacen parte de la comunidad.',
     icon: 'neighbors',
+    available: true,
   },
   {
     path: '/loans',
@@ -49,6 +59,12 @@ export const modules: {
 ]
 export const roleName: Record<Role, string> = { admin: 'Administrador', operator: 'Operador' }
 export const safeReturnPath = (value: unknown) =>
-  typeof value === 'string' && ['/home', ...modules.map((module) => module.path)].includes(value)
+  typeof value === 'string' &&
+  (['/home', ...modules.map((module) => module.path), '/articles/new', '/neighbors/new'].includes(
+    value,
+  ) ||
+    /^\/(articles|neighbors)\/[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}(\/edit)?$/i.test(
+      value,
+    ))
     ? value
     : '/home'

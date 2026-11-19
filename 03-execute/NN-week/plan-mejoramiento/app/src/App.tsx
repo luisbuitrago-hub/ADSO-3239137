@@ -6,11 +6,23 @@ import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { ModulePage, NotFoundPage } from './pages/ModulePage'
 import { modules } from './routes/navigation'
+import { AccessDenied } from './components/DataViews'
+import { CategoriesPage } from './pages/CategoriesPage'
+import { ArticlesPage } from './pages/ArticlesPage'
+import { ArticleDetailPage } from './pages/ArticleDetailPage'
+import { ArticleFormPage } from './pages/ArticleFormPage'
+import { NeighborsPage } from './pages/NeighborsPage'
+import { NeighborDetailPage } from './pages/NeighborDetailPage'
+import { NeighborFormPage } from './pages/NeighborFormPage'
 
 function RequireAuth() {
   const { session } = useAuth()
   const location = useLocation()
   return session ? <Outlet /> : <Navigate to="/login" state={{ from: location.pathname }} replace />
+}
+function RequireAdmin() {
+  const { session } = useAuth()
+  return session?.role === 'admin' ? <Outlet /> : <AccessDenied />
 }
 function RouteFocus() {
   const { pathname } = useLocation()
@@ -20,7 +32,9 @@ function RouteFocus() {
         ? 'Iniciar sesión'
         : pathname === '/home'
           ? 'Inicio'
-          : modules.find((module) => module.path === pathname)?.title || 'Página no encontrada'
+          : modules.find(
+              (module) => module.path === pathname || pathname.startsWith(module.path + '/'),
+            )?.title || 'Página no encontrada'
     document.title = `${title} · Kitchenware`
     document.getElementById('main-content')?.focus()
   }, [pathname])
@@ -38,9 +52,21 @@ export function App() {
         <Route element={<RequireAuth />}>
           <Route element={<AppShell />}>
             <Route path="/home" element={<HomePage />} />
-            {modules.map((module) => (
-              <Route path={module.path} element={<ModulePage />} key={module.path} />
-            ))}
+            <Route path="/categories" element={<CategoriesPage />} />
+            <Route path="/articles" element={<ArticlesPage />} />
+            <Route path="/articles/:id" element={<ArticleDetailPage />} />
+            <Route path="/neighbors" element={<NeighborsPage />} />
+            <Route path="/neighbors/new" element={<NeighborFormPage />} />
+            <Route path="/neighbors/:id" element={<NeighborDetailPage />} />
+            <Route element={<RequireAdmin />}>
+              <Route path="/articles/new" element={<ArticleFormPage />} />
+              <Route path="/articles/:id/edit" element={<ArticleFormPage />} />
+            </Route>
+            {modules
+              .filter((module) => !module.available)
+              .map((module) => (
+                <Route path={module.path} element={<ModulePage />} key={module.path} />
+              ))}
           </Route>
         </Route>
         <Route path="/" element={<Navigate to="/home" replace />} />

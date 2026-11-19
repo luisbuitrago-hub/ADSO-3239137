@@ -12,7 +12,11 @@ export function AppShell() {
   const location = useLocation()
   if (!session) return null
   const visible = modules.filter((module) => !module.adminOnly || session.role === 'admin')
-  const title = modules.find((module) => module.path === location.pathname)?.title || 'Inicio'
+  const title =
+    modules.find(
+      (module) =>
+        module.path === location.pathname || location.pathname.startsWith(module.path + '/'),
+    )?.title || 'Inicio'
   return (
     <div className="app-shell">
       <aside

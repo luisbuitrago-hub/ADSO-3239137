@@ -52,11 +52,14 @@ export function HomePage() {
                   <span className="module-icon">
                     <Icon name={module.icon} />
                   </span>
-                  <span className="module-status">Próximamente</span>
+                  <span className="module-status">
+                    {module.available ? 'Disponible' : 'Próximamente'}
+                  </span>
                   <h3>{module.title}</h3>
                   <p>{module.description}</p>
                   <span className="module-link">
-                    Ver estado del módulo <Icon name="arrow" />
+                    {module.available ? 'Abrir módulo' : 'Ver estado del módulo'}{' '}
+                    <Icon name="arrow" />
                   </span>
                 </Link>
               ))}
