@@ -1,20 +1,75 @@
+name: kitchenware
+
 services:
   postgres:
     image: postgres:16
     restart: unless-stopped
     environment:
-      POSTGRES_DB: kitchenware
-      POSTGRES_USER: kitchenware
+      POSTGRES_DB: ${POSTGRES_DB:-kitchenware}
+      POSTGRES_USER: ${POSTGRES_USER:-kitchenware}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
-    ports:
-      - "127.0.0.1:5432:5432"
     volumes:
       - kitchenware_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kitchenware -d kitchenware"]
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 10s
+    networks: [database]
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/docker/api.Dockerfile
+      target: runtime
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_NAME: Kitchenware
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: ${APP_KEY:?Define APP_KEY}
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_DATABASE: ${POSTGRES_DB:-kitchenware}
+      DB_USERNAME: ${POSTGRES_USER:-kitchenware}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
+      DB_URL: ""
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:?Define ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Define ADMIN_PASSWORD}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      COVERS_DIR: /var/lib/kitchenware/covers
+      LOG_CHANNEL: stderr
+      LOG_LEVEL: warning
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+    ports:
+      - "${API_BIND_ADDRESS:-127.0.0.1}:${API_PORT:-8080}:8080"
+    volumes:
+      - kitchenware_covers_data:/var/lib/kitchenware/covers
+    networks: [database, http]
+    healthcheck:
+      test: ["CMD", "php", "/usr/local/lib/kitchenware/healthcheck.php"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
 
 volumes:
   kitchenware_postgres_data:
+  kitchenware_covers_data:
+
+networks:
+  database:
+    internal: true
+  http:
