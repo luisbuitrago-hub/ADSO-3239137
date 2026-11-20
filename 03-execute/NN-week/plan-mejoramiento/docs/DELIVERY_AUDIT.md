@@ -309,3 +309,54 @@ para conservar contenedores y volúmenes. No repetir pruebas costosas sin necesi
 Evidencias detalladas: [backend](../api/BACKEND_AUDIT.md),
 [infraestructura](../infra/VERIFICATION.md), [React](../app/VERIFICATION.md),
 [página pública](../page/VERIFICATION.md) y [herramientas](../tool/VERIFICATION.md).
+
+## Adenda: corrección acotada del HTTP 413 de Nginx
+
+La observación RNF-4 anterior corresponde al despliegue auditado. Se corrigió en
+app/nginx.conf mediante error_page y una ubicación interna con nombre: los HTTP 413
+generados por Nginx mantienen su estado y devuelven application/json; charset=utf-8:
+
+```json
+{
+  "code": "PAYLOAD_TOO_LARGE",
+  "message": "La solicitud supera el tamaño máximo permitido.",
+  "details": []
+}
+```
+
+PAYLOAD_TOO_LARGE identifica este rechazo de transporte; no sustituye el
+VALIDATION_ERROR/422 de Laravel ni añade un endpoint. No se habilita intercepción
+de errores del upstream. Se conserva client_max_body_size 3m y la validación de
+imágenes de Laravel de 2 MiB. No se modificaron reglas, contrato ni archivos .env.
+
+La regresión infra/tests/test_nginx_413.py usa dos contenedores nuevos, Nginx real
+con el archivo fuente actualizado y un upstream PHP simulado, en una red exclusiva.
+Reutiliza imágenes locales sin descargarlas ni reconstruir el stack. No inicia ni
+conecta PostgreSQL. Comprueba 4 MiB por POST/PUT, límite exacto 3 MiB, rechazo a
+3 MiB + 1, campos JSON/UTF-8/ausencia de redirección y conservación de errores 422.
+Los tres métodos de prueba aprobaron. La primera ejecución detectó que faltaba
+declarar application/json entre charset_types; se corrigió y se repitió la suite.
+nginx -t pasó. Se compararon metadatos de contenedores anteriores, existencia de
+volúmenes y huellas privadas de los .env: sin cambios. Solo se detuvieron los
+contenedores nuevos, conservando sus recursos.
+
+También se ejecutó composer test -- --filter ArticleCoverTest: 13 pruebas,
+126 aserciones, 0 fallidas, en SQLite en memoria. No se repitieron pruebas ajenas
+a esta corrección ni se modificaron migraciones o código Laravel.
+
+Reproducción desde la raíz Kitchenware, con Docker y las imágenes locales indicadas
+(ajustar sus nombres si se utiliza otra instalación compatible):
+
+```sh
+NGINX_TEST_IMAGE=kitchenware-delivery-15ef2c2662a2-app:latest \
+PHP_TEST_IMAGE=kitchenware-delivery-15ef2c2662a2-api:latest \
+python3 infra/tests/test_nginx_413.py
+```
+
+Había 1,9 GiB libres en el volumen del proyecto; el test exige al menos 256 MiB.
+La corrección está verificada **en aislamiento**, no aplicada al servicio del puerto 15173. Actualizarlo requiere reconstruir/recrear su contenedor app, operación que
+no se ejecutó por la prohibición de reemplazar contenedores existentes. PostgreSQL
+del puerto 5432 y los tres servicios de entrega permanecen intactos. El cierre del
+hallazgo en ese despliegue queda pendiente de aplicar el cambio con autorización;
+esta adenda no declara resueltos otros posibles errores del proxy ni cambia los
+demás pendientes académicos del informe.
