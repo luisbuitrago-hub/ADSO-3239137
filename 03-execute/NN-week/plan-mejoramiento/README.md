@@ -18,14 +18,14 @@ Permite organizar el catálogo, registrar vecinos, controlar préstamos y devolu
 
 ## Organización del proyecto
 
-| Carpeta | Responsabilidad |
-|---|---|
-| `docs/` | Especificaciones, arquitectura, modelo de datos, contrato HTTP, tareas y ADR |
-| `api/` | Backend Laravel y pruebas automatizadas |
-| `app/` | Interfaz de administración desarrollada en React |
-| `page/` | Página pública de presentación |
-| `infra/` | Configuración de contenedores y servicios |
-| `tool/` | Generación de datos de demostración mediante la API |
+| Carpeta  | Responsabilidad                                                              |
+| -------- | ---------------------------------------------------------------------------- |
+| `docs/`  | Especificaciones, arquitectura, modelo de datos, contrato HTTP, tareas y ADR |
+| `api/`   | Backend Laravel y pruebas automatizadas                                      |
+| `app/`   | Interfaz de administración desarrollada en React                             |
+| `page/`  | Página pública de presentación                                               |
+| `infra/` | Configuración de contenedores y servicios                                    |
+| `tool/`  | Generación de datos de demostración mediante la API                          |
 
 ## Funcionalidades especificadas
 
@@ -62,6 +62,10 @@ El backend sigue como diseño de referencia una arquitectura hexagonal basada en
 La aplicación React consume los endpoints HTTP definidos para Laravel.
 
 ## Pruebas y verificación
+
+El estado consolidado de configuración, servicios, pruebas e historial está en
+[la auditoría final de entrega](docs/DELIVERY_AUDIT.md). Las instrucciones de Docker
+y configuración privada se encuentran en [infra/README.md](infra/README.md).
 
 El proyecto contempla pruebas del dominio, casos de uso, contrato HTTP, persistencia, concurrencia y arquitectura.
 

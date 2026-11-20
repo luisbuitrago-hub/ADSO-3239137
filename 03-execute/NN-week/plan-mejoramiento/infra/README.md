@@ -17,11 +17,21 @@ las pruebas de navegador añaden Node y dependencias de app/, incluido Chromium
 Desde `03-execute/NN-week/plan-mejoramiento/infra/`:
 
 ```bash
-cp .env.example .env
+cp --no-clobber .env.example .env
 chmod 600 .env
 ```
 
 Completar `.env` localmente una sola vez, sin reutilizar secretos de desarrollo.
+Compose carga `infra/.env` al ejecutarlo desde esta carpeta; no utiliza `api/.env`
+para interpolar sus variables. Un `.env.example` no se carga automáticamente.
+Incluso `ps` requiere interpolar los cinco valores obligatorios. No ejecutar `config`
+sin `--quiet` en una terminal compartida, porque muestra los secretos resueltos.
+
+Para coexistir con otra instalación, definir `COMPOSE_PROJECT_NAME` con un nombre
+nuevo y elegir `API_PORT` y `APP_PORT` libres. No usar `-p infra` ni apuntar a sus
+volúmenes. La auditoría local utiliza un proyecto `kitchenware-delivery-*`, API en
+18080 y React en 15173, ambos en loopback, con PostgreSQL sin puerto host. Los valores
+privados no se versionan. Nunca sobrescribir un `.env` existente para repetirla.
 Usar comillas simples en valores sensibles con `$`, `#` o espacios para evitar
 interpolación de Compose. No hay contraseñas predeterminadas.
 
@@ -51,7 +61,8 @@ Desde `infra/`, después de completar la configuración inicial:
 docker compose up --build -d
 ```
 
-El proyecto se llama `kitchenware`. Compose espera PostgreSQL saludable. El backend
+Por defecto el proyecto se llama `kitchenware`; COMPOSE_PROJECT_NAME puede elegir
+otro nombre para una instalación independiente. Compose espera PostgreSQL saludable. El backend
 valida configuración/conexión y ejecuta los comandos Laravel existentes:
 `kitchenware:prepare-database --force` y `kitchenware:initialize-admin --force`.
 Luego inicia Apache. No borra esquemas, no carga datos de demostración y no cambia
@@ -240,22 +251,44 @@ aleatorio localhost y tmpfs, sin volúmenes de desarrollo.
 Evidencia real: [VERIFICATION.md](VERIFICATION.md).
 Decisiones: [ADR-004-container-runtime.md](ADR-004-container-runtime.md).
 
-## Integración futura de app/, page/ y tool/
+### Auditoría de entrega con configuración local privada
 
-Ambas carpetas están ausentes. No se crean servicios vacíos ni funcionalidades
-ficticias. Incorporar sus Dockerfiles/servicios cuando existan. El navegador usará
-la URL pública API (no DNS interno api) y su origen coincidirá con CORS_ORIGIN.
-page/ servirá contenido estático sin acceso a PostgreSQL ni imágenes privadas.
+`python3 tests/verify-delivery.py --browser` verifica una instalación **nueva** con
+`infra/.env` privado 0600 y un `COMPOSE_PROJECT_NAME` nuevo con formato
+`kitchenware-delivery-` seguido de doce caracteres hexadecimales. Rechaza reutilizar
+contenedores/volúmenes por defecto. Lee secretos en memoria, suprime salidas sensibles
+y valida que los tres servicios y sus volúmenes estén aislados antes de construir.
 
-tool/ tampoco existe. Cuando se implemente, podrá ejecutarse como tarea puntual
-contra la API saludable por HTTP (http://api:8080 dentro de la red de Compose o la
-URL pública desde el equipo). No tendrá acceso a PostgreSQL ni a sus volúmenes.
-Sus credenciales se suministrarán en ejecución; no se incorporará al arranque normal
-para evitar duplicar datos de demostración. No se crea ahora un servicio ficticio.
+Reutiliza el cliente HTTP y la inspección de metadatos del verificador existente,
+sin ejecutar su limpieza ni recreación de contenedores. Hace stop/start únicamente
+de los servicios que acaba de crear para verificar persistencia, y los deja saludables.
+No elimina ningún recurso. `--browser` requiere Chromium y bibliotecas compatibles
+con las dependencias Playwright existentes de app/.
 
-RNF-5 se verifica para los servicios actuales (PostgreSQL + API). T-20 y el despliegue
-completo siguen parciales hasta integrar React y verificar el conjunto. No se
-cambia la definición académica de terminado.
+Para retomar una revisión del proyecto aislado ya creado existe `--existing`:
+no construye, inicia ni reinicia servicios, pero crea fixtures HTTP propios.
+`--restart-owned` autoriza explícitamente stop/start de ese proyecto aislado para
+comprobar persistencia; nunca utilizar estas opciones con una instalación de trabajo.
+La suite UI utiliza nombres de demostración y debe ejecutarse sobre un conjunto
+nuevo o revisado, no repetirse automáticamente sobre datos acumulados.
+
+En esta auditoría las bibliotecas de navegador se extrajeron en /tmp y se usaron
+por LD_LIBRARY_PATH; no se instalaron paquetes del sistema. La primera comprobación
+de /storage se corrigió para reconocer el HTML público de la SPA, sin confundirlo
+con una publicación de los bytes de la imagen. Ver resultados y pendientes en
+[DELIVERY_AUDIT.md](../docs/DELIVERY_AUDIT.md).
+
+## Integración de app/, page/ y tool/
+
+React ya está implementado y el complemento de abajo lo ejecuta con Nginx junto a
+PostgreSQL y Laravel. page/ es estática, independiente de la API, con destino React
+configurable; su alojamiento Docker sigue como estrategia documentada, no como
+servicio verificado. tool/ ya incluye el sembrador exclusivamente HTTP, sin acceso
+SQL ni carga automática al iniciar servicios. Consultar sus README y evidencias.
+
+El estado consolidado de RNF-5, T-20 y las limitaciones de entrega se documenta en
+[la auditoría final](../docs/DELIVERY_AUDIT.md). Los informes de cada bloque conservan
+su alcance y fecha; sus listas antiguas de carpetas ausentes no describen el estado actual.
 
 Referencias técnicas: [imagen oficial PHP](https://hub.docker.com/_/php) y
 [orden de arranque de Compose](https://docs.docker.com/compose/how-tos/startup-order/).

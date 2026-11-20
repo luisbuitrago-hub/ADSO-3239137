@@ -182,8 +182,8 @@ El nombre, la referencia y la categoría histórica no cambiarán cuando se modi
 | Usuario único | `UNIQUE(user.username)` | Motor |
 | Referencia única entre artículos activos | Índice único parcial con `deleted_at IS NULL` | Motor |
 | Unidades disponibles entre 0 y total | `ck_article_available_range` | Motor |
-| Total de unidades mayor o igual a 1 | `ck_article_total_positive` | Pendiente (T-18) |
-| Rol permitido | `ck_user_role` | Pendiente (T-18) |
+| Total de unidades mayor o igual a 1 | `ck_article_total_positive` | Motor |
+| Rol permitido | `ck_user_role` | Motor |
 | Artículo no repetido en un préstamo | `UNIQUE(loan_id, article_id)` | Motor |
 | Relaciones entre entidades | Claves foráneas | Motor |
 | Máximo 3 artículos pendientes por vecino | Validación de casos de uso | Solo dominio |
