@@ -141,29 +141,29 @@ Rutas relativas a /api/v1. V = ruta y permisos cotejados y pruebas funcionales d
 backend ejecutadas; PG = evidencia PostgreSQL anterior revisada, no repetida.
 Ambos significa admin/operator. Los dos endpoints públicos no necesitan token.
 
-| Método | Ruta                                    | Acceso  | Estado / evidencia                                        |
-| ------ | --------------------------------------- | ------- | --------------------------------------------------------- |
-| GET    | /health                                 | Público | V; HTTP real por Nginx                                    |
-| POST   | /auth/login                             | Público | V/PG; login real                                          |
-| POST   | /users                                  | Admin   | V/PG; creación y prohibición reales en navegador          |
-| GET    | /categories                             | Ambos   | V/PG; cinco categorías por HTTP                           |
-| GET    | /articles                               | Ambos   | V/PG; consultas del sembrador                             |
-| GET    | /articles/{id}                          | Ambos   | V/PG; consulta real                                       |
-| POST   | /articles                               | Admin   | V/PG; registro real                                       |
-| PUT    | /articles/{id}                          | Admin   | V/PG; snapshot comprobado por sembrador/UI                |
-| DELETE | /articles/{id}                          | Admin   | V/PG; baja lógica en recorrido UI                         |
-| PUT    | /articles/{id}/cover                    | Admin   | V/PG; multipart real                                      |
-| DELETE | /articles/{id}/cover                    | Admin   | V/PG; eliminación en UI                                   |
-| GET    | /articles/{id}/cover                    | Ambos   | V/PG; bytes y permisos reales                             |
-| GET    | /neighbors                              | Ambos   | V/PG; consultas reales                                    |
-| GET    | /neighbors/{id}                         | Ambos   | V/PG; detalle real por sembrador                          |
-| POST   | /neighbors                              | Ambos   | V/PG; datos sintéticos propios                            |
-| POST   | /loans                                  | Ambos   | V/PG; préstamos y restricciones reales                    |
-| GET    | /loans                                  | Ambos   | V/PG; consulta real                                       |
-| GET    | /loans/{id}                             | Ambos   | V/PG; historial real                                      |
-| POST   | /loans/{loan_id}/items/{item_id}/return | Ambos   | V/PG; devoluciones y repetición reales                    |
-| GET    | /loans/overdue                          | Ambos   | V/PG; consulta real aún vacía, positivo anterior en tests |
-| GET    | /reports/most-borrowed                  | Admin   | V/PG; reporte real, también rechazo de operador           |
+| Método | Ruta                                    | Acceso  | Estado / evidencia                                  |
+| ------ | --------------------------------------- | ------- | --------------------------------------------------- |
+| GET    | /health                                 | Público | V; HTTP real por Nginx                              |
+| POST   | /auth/login                             | Público | V/PG; login real                                    |
+| POST   | /users                                  | Admin   | V/PG; creación y prohibición reales en navegador    |
+| GET    | /categories                             | Ambos   | V/PG; cinco categorías por HTTP                     |
+| GET    | /articles                               | Ambos   | V/PG; consultas del sembrador                       |
+| GET    | /articles/{id}                          | Ambos   | V/PG; consulta real                                 |
+| POST   | /articles                               | Admin   | V/PG; registro real                                 |
+| PUT    | /articles/{id}                          | Admin   | V/PG; snapshot comprobado por sembrador/UI          |
+| DELETE | /articles/{id}                          | Admin   | V/PG; baja lógica en recorrido UI                   |
+| PUT    | /articles/{id}/cover                    | Admin   | V/PG; multipart real                                |
+| DELETE | /articles/{id}/cover                    | Admin   | V/PG; eliminación en UI                             |
+| GET    | /articles/{id}/cover                    | Ambos   | V/PG; bytes y permisos reales                       |
+| GET    | /neighbors                              | Ambos   | V/PG; consultas reales                              |
+| GET    | /neighbors/{id}                         | Ambos   | V/PG; detalle real por sembrador                    |
+| POST   | /neighbors                              | Ambos   | V/PG; datos sintéticos propios                      |
+| POST   | /loans                                  | Ambos   | V/PG; préstamos y restricciones reales              |
+| GET    | /loans                                  | Ambos   | V/PG; consulta real                                 |
+| GET    | /loans/{id}                             | Ambos   | V/PG; historial real                                |
+| POST   | /loans/{loan_id}/items/{item_id}/return | Ambos   | V/PG; devoluciones y repetición reales              |
+| GET    | /loans/overdue                          | Ambos   | V/PG; tres líneas vencidas confirmadas (25-11-2026) |
+| GET    | /reports/most-borrowed                  | Admin   | V/PG; reporte real, también rechazo de operador     |
 
 ApiContractTest pasó dentro de las 188 pruebas: verifica el conjunto exacto de
 21 rutas, middlewares y JSON uniforme en las 19 protegidas sin token. No se agregó
@@ -176,7 +176,7 @@ la salvedad 413 que se describe abajo.
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | RN-1 Inventario entre cero y total                  | Verificada en suite actual, sembrador real y evidencia PG/concurrencia                            |
 | RN-2 Tres días y máximo tres pendientes             | Verificada en suite, sembrador y evidencia PG; no se adelantaron fechas reales                    |
-| RN-3 Bloqueo por vencidos                           | Pruebas del backend/evidencia PG aprobadas; demostración natural nueva pendiente                  |
+| RN-3 Bloqueo por vencidos                           | Backend/PG y bloqueo HTTP 409 real verificados el 25-11-2026; ver cierre T-21                     |
 | RN-4 Snapshots históricos                           | Suite, reporte y cambio de catálogo reales aprobados                                              |
 | RN-5 Historial no eliminable y baja lógica          | Rutas, pruebas y recorrido UI; limpieza HTTP conserva historia                                    |
 | RN-6 UTC, identificadores inglés y mensajes español | Código/documentación y pruebas; conexión nueva confirma UTC                                       |
@@ -201,7 +201,7 @@ adaptadores y composición. No se prueba formalmente todo SOLID mediante un test
 | T-18 Restricciones adicionales | Confirmadas en migraciones y metadatos PG nuevo; clasificación documental corregida                                 |
 | T-19 Arquitectura              | Suite actual aprobada y revisión de dependencias                                                                    |
 | T-20 Compose                   | Tres servicios saludables e integración real verificadas                                                            |
-| T-21 Sembrador                 | Parcial: cantidades y reporte acreditados; tres vencidas naturales aún no                                           |
+| T-21 Sembrador                 | COMPLETADA: cantidades, reporte y tres vencidas naturales verificadas el 25-11-2026                                 |
 | T-22 React                     | Implementado; suite de 148 pruebas, build/lint y recorrido Docker real aprobados; evidencias anteriores conservadas |
 | T-23 Página pública            | Implementada; móvil/escritorio/accesibilidad y enlace al React real comprobados; no requiere Docker para funcionar  |
 
@@ -286,13 +286,11 @@ para conservar contenedores y volúmenes. No repetir pruebas costosas sin necesi
    app/nginx.conf ni el contrato para esconder el hallazgo. Solicitudes normales y
    errores de Laravel conservan code/message/details. La validación de imagen sigue
    siendo 2 MiB; el límite de transporte Nginx de 3 MiB admite el multipart.
-2. T-21: se dejó un conjunto propio persistente en este stack con tres líneas
-   pendientes. El recibo privado está en tool/.runs/delivery-kitchenware-delivery-15ef2c2662a2.jsonl.
-   La comprobación positiva debe realizarse después de 2026-11-23T00:59:56Z
-   (22 de noviembre, 19:59:56 en America/Bogota). Las credenciales permanecen en
-   infra/.env; mantenerlas estables. Seguir tool/README.md, cargar sus variables
-   desde un entorno privado y ejecutar overdue y overdue --apply con ese recibo.
-   No ejecutar cleanup antes de demostrarlo, no cambiar el reloj ni editar fechas SQL.
+2. T-21 **COMPLETADA** el 25 de noviembre de 2026 en America/Bogota: se verificaron
+   las tres líneas originales vencidas y el rechazo de un nuevo préstamo sin cambios
+   en los datos de demostración. Ver la evidencia y los identificadores en el cierre
+   T-21 al final del documento. Conservar el recibo privado y los datos para sustentar;
+   no ejecutar limpieza ni cambiar las fechas.
 3. Verificar con el instructor el criterio de zona horaria de los ocho días.
 4. Se reejecutó Pint global y no aprobó por estilo previo en tres migraciones:
    2026_11_14_025611_create_user_table.php, 2026_11_14_025755_create_loan_table.php y
@@ -360,3 +358,83 @@ del puerto 5432 y los tres servicios de entrega permanecen intactos. El cierre d
 hallazgo en ese despliegue queda pendiente de aplicar el cambio con autorización;
 esta adenda no declara resueltos otros posibles errores del proxy ni cambia los
 demás pendientes académicos del informe.
+
+## Cierre T-21 — evidencia real del 25 de noviembre de 2026
+
+**Estado final: COMPLETADA.** Se comprobó el conjunto original en
+kitchenware-delivery-15ef2c2662a2 mediante HTTP contra Laravel/PostgreSQL reales.
+La fecha del encabezado Date fue 2026-11-26T00:01:52Z, equivalente al 25 de noviembre
+19:01:52 en America/Bogota. El día UTC distinto corresponde a la misma ejecución,
+no a un cambio del reloj. No se simuló ni adelantó el tiempo.
+
+El recibo privado original es
+`tool/.runs/delivery-kitchenware-delivery-15ef2c2662a2.jsonl`, regular, sin enlace
+simbólico y con permisos 0600. Se validaron su URL original, prefijo de ejecución,
+UUID de artículos/vecinos/préstamos y pertenencia de las líneas. Se cotejaron las
+líneas de loan:0 y loan:1 del recibo con los detalles HTTP: son **tres líneas de
+dos préstamos**, no tres préstamos distintos. Las fechas coinciden con las
+registradas originalmente y returned_at sigue siendo null en las tres.
+
+| Préstamo original (UUID)             | Línea original (UUID)                | due_at UTC           | days_late observado |
+| ------------------------------------ | ------------------------------------ | -------------------- | ------------------- |
+| a69a7ef8-5a14-49c3-8827-f747e75b8f44 | 210dbd7c-4e10-4cdc-94df-e9eb861dc150 | 2026-11-23T00:59:55Z | 2                   |
+| dd4440ab-6470-4a78-8583-b2ca6435caa7 | 63cf06bb-5211-4381-8084-8aa423216a6f | 2026-11-23T00:59:55Z | 2                   |
+| dd4440ab-6470-4a78-8583-b2ca6435caa7 | 830dd1fc-8a08-4196-be37-5c4fc73cd9e6 | 2026-11-23T00:59:55Z | 2                   |
+
+GET /api/v1/loans/overdue respondió **HTTP 200** y devolvió las tres líneas anteriores,
+identificadas por sus UUID y filtradas contra el recibo; no se publican nombres ni
+información de otros vecinos. El vencimiento original fue 2026-11-23T00:59:55Z;
+el margen recomendado de comprobación era un segundo después. La fecha del servidor
+es posterior. days_late=2 corresponde a días completos transcurridos en ese instante.
+
+### Comandos y resultados de esta verificación
+
+Con las credenciales originales cargadas solo en memoria desde infra/.env, se
+prepararon las variables KITCHENWARE_* de tool/ para la URL original
+http://127.0.0.1:18080/api/v1 y el recibo indicado. Para la única prueba negativa se
+confirmó ese destino con KITCHENWARE_CONFIRM_TARGET y KITCHENWARE_WRITE_ACK=isolated-demo.
+No se escribieron ni imprimieron credenciales o JWT. Desde tool/ se ejecutaron:
+
+```sh
+python3 kitchenware.py verify
+python3 kitchenware.py overdue
+python3 kitchenware.py overdue --apply
+```
+
+| Comprobación                       | Resultado real                                                                                                                                       |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| verify                             | Salida 0, complete_demo=true, cleaned=false                                                                                                          |
+| Cantidades propias del recibo      | 40 artículos activos, 10 vecinos y 15 préstamos                                                                                                      |
+| Reporte histórico propio           | 16 líneas contabilizadas, antes y después de la prueba                                                                                               |
+| overdue                            | Salida 0, own_overdue_lines=3, minimum_met=true; Date 2026-11-26T00:01:56Z                                                                           |
+| overdue --apply                    | Salida 0, proof_executed=true; Date 2026-11-26T00:01:58Z                                                                                             |
+| Único POST /api/v1/loans de prueba | HTTP 409, code=NEIGHBOR_HAS_OVERDUE; no se creó recurso                                                                                              |
+| Líneas originales después          | Las mismas tres continúan sin devolver y vencidas                                                                                                    |
+| Preservación por HTTP              | Artículos, inventario y detalles de los 15 préstamos idénticos; pertenencia/documentos de vecinos confirmados; total global de préstamos sin cambios |
+| Docker y archivos privados         | Metadatos de todos los contenedores y huellas de ambos .env sin cambios                                                                              |
+
+La operación rechazada utilizó un vecino original con vencidos y un artículo propio
+con unidades disponibles. Antes se verificaron ambos por HTTP. El recibo añadió
+solo dos eventos (intención y resultado HTTP 409) bajo error:overdue: pasó de 176
+a 178 eventos, sin operaciones inciertas ni recurso creado. No se alteraron los
+registros históricos del recibo ni los datos originales en la API. La evidencia
+sanitizada auxiliar quedó en /tmp/kitchenware-t21-20261125-s18pm1z2.json, privada;
+los UUID/resultados relevantes se conservan aquí y el resultado HTTP en el recibo.
+
+Una comprobación inicial de identidad Docker se detuvo antes de la prueba de
+escritura porque contenedores antiguos de regresión heredaban etiquetas de la imagen.
+El recibo permaneció en 176 eventos. Se identificaron los tres servicios por sus
+nombres exactos, etiquetas, puerto y volumen exclusivos, y luego se ejecutó una
+sola prueba de préstamo. No hubo reintentos de POST ni reinicios de servicios.
+
+No se ejecutó SQL, seed, cleanup, devoluciones, eliminaciones, reconstrucciones,
+cambios de fechas/reloj, modificaciones de .env ni comandos Git de escritura.
+PostgreSQL del puerto 5432 no recibió consultas ni modificaciones; su contenedor
+conservó los metadatos anteriores. Los tres servicios aislados siguieron activos.
+
+Con esta evidencia se acredita toda T-21: sembrador exclusivamente HTTP, mínimos
+40/10/15, al menos tres líneas vencidas naturales y reporte con resultados, además
+del bloqueo de nuevos préstamos al vecino con vencidos. No queda evidencia pendiente
+para T-21. Los otros pendientes del informe (por ejemplo aplicar la corrección RNF-4
+al contenedor existente y revisar el criterio UTC/Bogota con el instructor) no se
+cierran por esta comprobación y no se ejecutaron pruebas ajenas a su alcance.
